@@ -1,4 +1,4 @@
-use leptos::prelude::*;
+use leptos::{logging::log, prelude::*, reactive::spawn_local};
 use leptos_meta::{provide_meta_context, Stylesheet, Title};
 use leptos_router::{
     components::{Route, Router, Routes},
@@ -34,18 +34,42 @@ pub fn App() -> impl IntoView {
 #[component]
 fn HomePage() -> impl IntoView {
     // Creates a reactive value to update the button
-    let count = RwSignal::new(0);
-    let on_click = move |_| *count.write() += 1;
+    // let count = RwSignal::new(0);
+    // let on_click = move |_| *count.write() += 1;
 
-    let (name, set_name) = signal("Name".to_string());
+    // let  = signal("Model id in UUID".to_string());
+    // let on_click_connect_to_db = move |_| {
+    //     spawn_local(async {
+    //         parse_model(model_id.get().clone()).await;
+    //     });
+    // };
+
+    let parse_model_action = ServerAction::<ParseModel>::new();
+    let value = parse_model_action.value();
+
+    let (result, set_result) = signal("".to_string());
+  
+    Effect::new(move |_| {
+        if let Some(Ok(value)) = value.get() {
+            set_result.set(value);
+        }
+    });
 
     view! {
         <h1>"Welcome to Leptos!"</h1>
-        <button on:click=on_click>"Click Me: " {count}</button>
         <br/>
-        <input type="text" bind:value=(name, set_name)/>
+        // <input type="text" bind:value=(model_id, set_model_id)/>
 
-        <p>"Name is: " {name}</p>
+        // <button on:click=on_click_connect_to_db>"Connect"</button>
+        <ActionForm action=parse_model_action>
+          <input type="text" name="model_id" placeholder="Model Id"/>
+          <button type="submit">Create Post</button>
+        </ActionForm>
+
+        <div>
+            "Result: " {result}
+        </div>
+        // <p>"Resuk: " {model_id}</p>
     }
 }
 
@@ -69,4 +93,13 @@ fn NotFound() -> impl IntoView {
     view! {
         <h1>"Not Found"</h1>
     }
+}
+
+#[server(ParseModel, "/api")]
+pub async fn parse_model(model_id: String) -> Result<String, ServerFnError> {
+    log!("Parsing model with id {}", model_id);
+    use crate::model::database_util;
+    let db_pool = database_util::connect_to_db().await;
+
+    Ok("String".to_string())
 }
