@@ -1,201 +1,229 @@
+/* json_renderer.css */
+
 body {
-	font-family: sans-serif;
-	text-align: center;
+    font-family: monospace, 'Monaco', 'Menlo', 'Ubuntu Mono';
+    font-size: 14px;
+    padding: 20px;
+    margin: 0;
 }
 
-/* JSON Container Styles */
+.app {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.demo-section {
+    margin-bottom: 30px;
+}
+
+.demo-title {
+    color: #569cd6;
+    font-size: 24px;
+    margin-bottom: 20px;
+    font-weight: bold;
+    text-align: center;
+}
+
+.input-section {
+    margin-bottom: 20px;
+}
+
+.json-input {
+    width: 100%;
+    height: 200px;
+    background: #252526;
+    color: #d4d4d4;
+    border: 1px solid #3e3e42;
+    border-radius: 8px;
+    padding: 15px;
+    font-family: inherit;
+    font-size: 14px;
+    resize: vertical;
+    box-sizing: border-box;
+}
+
+.json-input:focus {
+    outline: none;
+    border-color: #007acc;
+    box-shadow: 0 0 0 2px rgba(0, 122, 204, 0.2);
+}
+
 .json-container {
-	background-color: #1e1e1e;
-	border: 1px solid #3c3c3c;
-	border-radius: 8px;
-	padding: 16px;
-	margin: auto;
-	/* Spacing outside the div */
-	font-family: monospace;
-	font-size: 14px;
-	line-height: 1.5;
-	color: #d4d4d4;
-	overflow: auto;
-	overflow-x: auto;
-	max-height: 600px;
-	max-width: 50%;
-	white-space: pre-wrap;
-	word-wrap: break-word;
-	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-	border: 1px solid #ccc;
-	text-align: left;
+    background: #252526;
+    border-radius: 8px;
+    padding: 20px;
+    border: 1px solid #3e3e42;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    overflow-x: auto;
 }
 
-/* Scrollbar Styling */
-.json-container::-webkit-scrollbar {
-	width: 8px;
-	height: 8px;
+.json-viewer {
+    line-height: 1.6;
+    font-size: 12px;
+    min-height: 100px;
 }
 
-.json-container::-webkit-scrollbar-track {
-	background: #d7d1d1;
-	border-radius: 4px;
+.json-keys-number {
+    font-size: 11px;
+    color: rgb(161, 158, 158);
 }
 
-.json-container::-webkit-scrollbar-thumb {
-	background: #5a5a5a;
-	border-radius: 4px;
+/* JSON syntax highlighting */
+.json-key {
+    color: #9cdcfe;
+    font-weight: 100;
 }
 
-.json-container::-webkit-scrollbar-thumb:hover {
-	background: #6a6a6a;
-}
-
-/* JSON Syntax Highlighting */
 .json-string {
-	color: #ce9178;
+    color: #ce9178;
 }
 
 .json-number {
-	color: #b5cea8;
+    color: #b5cea8;
 }
 
 .json-boolean {
-	color: #569cd6;
+    color: #569cd6;
+    font-weight: bold;
 }
 
 .json-null {
-	color: #569cd6;
-}
-
-.json-key {
-	color: #9cdcfe;
+    color: #569cd6;
+    font-weight: bold;
+    font-style: italic;
 }
 
 .json-punctuation {
-	color: #d4d4d4;
-}
-
-/* Alternative Light Theme */
-.json-container.light-theme {
-	background-color: #ffffff;
-	border-color: #e1e4e8;
-	color: #24292e;
-	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.light-theme .json-container::-webkit-scrollbar-track {
-	background: #f6f8fa;
-}
-
-.light-theme .json-container::-webkit-scrollbar-thumb {
-	background: #c1c8cd;
-}
-
-.light-theme .json-container::-webkit-scrollbar-thumb:hover {
-	background: #a8b2ba;
-}
-
-.light-theme .json-string {
-	color: #032f62;
-}
-
-.light-theme .json-number {
-	color: #005cc5;
-}
-
-.light-theme .json-boolean {
-	color: #d73a49;
-}
-
-.light-theme .json-null {
-	color: #d73a49;
-}
-
-.light-theme .json-key {
-	color: #6f42c1;
-}
-
-.light-theme .json-punctuation {
-	color: #24292e;
-}
-
-/* Responsive Design */
-@media (max-width: 768px) {
-	.json-container {
-		font-size: 12px;
-		padding: 12px;
-		max-height: 300px;
-	}
-}
-
-/* Copy Button Styling (Optional) */
-.json-wrapper {
-	position: relative;
-}
-
-.json-copy-btn {
-	position: absolute;
-	top: 8px;
-	right: 8px;
-	background: #0d1117;
-	border: 1px solid #30363d;
-	border-radius: 4px;
-	color: #f0f6fc;
-	padding: 4px 8px;
-	font-size: 12px;
-	cursor: pointer;
-	opacity: 0;
-	transition: opacity 0.2s ease;
-}
-
-.json-wrapper:hover .json-copy-btn {
-	opacity: 1;
-}
-
-.json-copy-btn:hover {
-	background: #21262d;
-	border-color: #8b949e;
-}
-
-/* Focus and Selection Styles */
-.json-container:focus {
-	outline: 2px solid #0969da;
-	outline-offset: 2px;
-}
-
-.json-container::selection {
-	background-color: #264f78;
-}
-
-.json-container::-moz-selection {
-	background-color: #264f78;
-}
-
-/* Indentation Helper */
-.json-indent {
-	margin-left: 20px;
-}
-
-/* Error State Styling */
-.json-container.error {
-	border-color: #f85149;
-	background-color: #0d1117;
+    color: #f4e810;
 }
 
 .json-error {
-	color: #f85149;
-	font-weight: bold;
+    color: #f44747;
+    font-style: italic;
 }
 
-/* Loading State */
-.json-container.loading {
-	background: linear-gradient(90deg, #1e1e1e 25%, #2a2a2a 50%, #1e1e1e 75%);
-	background-size: 200% 100%;
-	animation: loading 1.5s infinite;
+/* Structure */
+.json-line {
+    position: relative;
+    padding: 2px 0;
+    min-height: 1.6em;
+    display: flex;
+    align-items: flex-start;
 }
 
-@keyframes loading {
-	0% {
-		background-position: 200% 0;
-	}
+.json-object,
+.json-array {
+    position: relative;
+}
 
-	100% {
-		background-position: -200% 0;
-	}
+.json-object-item,
+.json-array-item {
+    position: relative;
+}
+
+/* Collapsible functionality */
+.json-toggle {
+    cursor: pointer;
+    user-select: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    margin-right: 8px;
+    color: #808080;
+    font-size: 12px;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.json-toggle:hover {
+    color: #d4d4d4;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+}
+
+.json-toggle.collapsed {
+    transform: rotate(-90deg);
+}
+
+.json-content {
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
+.json-content.collapsed {
+    display: none;
+}
+
+/* Hover effects */
+.json-key:hover {
+    background: rgba(156, 220, 254, 0.1);
+    border-radius: 3px;
+    padding: 1px 2px;
+    margin: -1px -2px;
+}
+
+.json-string:hover {
+    background: rgba(206, 145, 120, 0.1);
+    border-radius: 3px;
+    padding: 1px 2px;
+    margin: -1px -2px;
+}
+
+.json-number:hover {
+    background: rgba(181, 206, 168, 0.1);
+    border-radius: 3px;
+    padding: 1px 2px;
+    margin: -1px -2px;
+}
+
+.json-boolean:hover,
+.json-null:hover {
+    background: rgba(86, 156, 214, 0.1);
+    border-radius: 3px;
+    padding: 1px 2px;
+    margin: -1px -2px;
+}
+
+/* Nesting visual guides */
+.json-object > .json-content,
+.json-array > .json-content {
+    position: relative;
+}
+
+.json-object > .json-content::before,
+.json-array > .json-content::before {
+    content: '';
+    position: absolute;
+    left: 8px;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: #404040;
+    transition: background-color 0.2s ease;
+}
+
+.json-object:hover > .json-content::before,
+.json-array:hover > .json-content::before {
+    background: #007acc;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    body {
+        padding: 10px;
+    }
+    
+    .json-container {
+        padding: 15px;
+    }
+    
+    .json-input {
+        height: 150px;
+    }
+    
+    .demo-title {
+        font-size: 20px;
+    }
 }

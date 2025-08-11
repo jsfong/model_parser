@@ -6,7 +6,9 @@ use leptos_router::{
     components::{Route, Router, Routes},
     StaticSegment, WildcardSegment,
 };
-use serde::{Deserialize, Serialize};
+use serde::{de::value, Deserialize, Serialize};
+use serde_json::Value;
+use crate::component::json_viewer;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ServerResult {
@@ -25,7 +27,7 @@ pub fn App() -> impl IntoView {
         <Stylesheet id="leptos" href="/pkg/leptos_model_parser.css"/>
 
         // sets the document title
-        <Title text="Welcome to Leptos"/>
+        <Title text="Model Parser"/>
 
         // content for this welcome page
         <Router>
@@ -47,7 +49,9 @@ fn HomePage() -> impl IntoView {
     let value = parse_model_action.value();
     let (result, set_result) = signal("".to_string());
     let (duration, set_duration) = signal("".to_string());
-    
+
+    let parsed_json = Memo::new(move |_| serde_json::from_str::<Value>(&result.get()).ok());
+
     Effect::new(move |_| {
         if let Some(Ok(result)) = value.get() {
             set_result.set(result.value);
@@ -56,21 +60,31 @@ fn HomePage() -> impl IntoView {
     });
 
     view! {
-        <h1>"Welcome to Leptos!"</h1>
+        <h1>"Model Parser"</h1>
         <br/>
-        // <input type="text" bind:value=(model_id, set_model_id)/>
 
-        // <button on:click=on_click_connect_to_db>"Connect"</button>
+        // Input
         <ActionForm action=parse_model_action>
-          <input type="text" name="model_id" placeholder="Model Id" value="aa5bc4b2-156f-4bad-b13a-4ccf31df53ca"/>
+          <input type="text" name="model_id" placeholder="Model Id" size=40 value="aa5bc4b2-156f-4bad-b13a-4ccf31df53ca"/>
           <button type="submit">Read model</button>
         </ActionForm>
 
-        <div>
-            <p>"Result: " </p>
-            <div class="json-container light-theme"> {result} </div>
-            <div> "Duration: " {duration}</div>
+        <br />
+        // Json Result
+        <div class="json-container">
+            <div class="json-viewer">
+                {move || {
+                    if let Some(parsed_json) = parsed_json.get() {
+                        view! {<json_viewer::JsonValue value=parsed_json depth=1 />}.into_any()
+                    }else{
+                        view! {<json_viewer::JsonNotFound />}.into_any()
+                    }
+                }}
+
+            </div>
         </div>
+        <div> "Duration: " {duration}</div>
+
     }
 }
 
@@ -136,3 +150,4 @@ pub async fn parse_model(model_id: String) -> Result<ServerResult, ServerFnError
         }
     }
 }
+
