@@ -2,3 +2,200 @@ body {
 	font-family: sans-serif;
 	text-align: center;
 }
+
+/* JSON Container Styles */
+.json-container {
+	background-color: #1e1e1e;
+	border: 1px solid #3c3c3c;
+	border-radius: 8px;
+	padding: 16px;
+	margin: auto;
+	/* Spacing outside the div */
+	font-family: monospace;
+	font-size: 14px;
+	line-height: 1.5;
+	color: #d4d4d4;
+	overflow: auto;
+	overflow-x: auto;
+	max-height: 600px;
+	max-width: 50%;
+	white-space: pre-wrap;
+	word-wrap: break-word;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+	border: 1px solid #ccc;
+	text-align: left;
+}
+
+/* Scrollbar Styling */
+.json-container::-webkit-scrollbar {
+	width: 8px;
+	height: 8px;
+}
+
+.json-container::-webkit-scrollbar-track {
+	background: #d7d1d1;
+	border-radius: 4px;
+}
+
+.json-container::-webkit-scrollbar-thumb {
+	background: #5a5a5a;
+	border-radius: 4px;
+}
+
+.json-container::-webkit-scrollbar-thumb:hover {
+	background: #6a6a6a;
+}
+
+/* JSON Syntax Highlighting */
+.json-string {
+	color: #ce9178;
+}
+
+.json-number {
+	color: #b5cea8;
+}
+
+.json-boolean {
+	color: #569cd6;
+}
+
+.json-null {
+	color: #569cd6;
+}
+
+.json-key {
+	color: #9cdcfe;
+}
+
+.json-punctuation {
+	color: #d4d4d4;
+}
+
+/* Alternative Light Theme */
+.json-container.light-theme {
+	background-color: #ffffff;
+	border-color: #e1e4e8;
+	color: #24292e;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.light-theme .json-container::-webkit-scrollbar-track {
+	background: #f6f8fa;
+}
+
+.light-theme .json-container::-webkit-scrollbar-thumb {
+	background: #c1c8cd;
+}
+
+.light-theme .json-container::-webkit-scrollbar-thumb:hover {
+	background: #a8b2ba;
+}
+
+.light-theme .json-string {
+	color: #032f62;
+}
+
+.light-theme .json-number {
+	color: #005cc5;
+}
+
+.light-theme .json-boolean {
+	color: #d73a49;
+}
+
+.light-theme .json-null {
+	color: #d73a49;
+}
+
+.light-theme .json-key {
+	color: #6f42c1;
+}
+
+.light-theme .json-punctuation {
+	color: #24292e;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+	.json-container {
+		font-size: 12px;
+		padding: 12px;
+		max-height: 300px;
+	}
+}
+
+/* Copy Button Styling (Optional) */
+.json-wrapper {
+	position: relative;
+}
+
+.json-copy-btn {
+	position: absolute;
+	top: 8px;
+	right: 8px;
+	background: #0d1117;
+	border: 1px solid #30363d;
+	border-radius: 4px;
+	color: #f0f6fc;
+	padding: 4px 8px;
+	font-size: 12px;
+	cursor: pointer;
+	opacity: 0;
+	transition: opacity 0.2s ease;
+}
+
+.json-wrapper:hover .json-copy-btn {
+	opacity: 1;
+}
+
+.json-copy-btn:hover {
+	background: #21262d;
+	border-color: #8b949e;
+}
+
+/* Focus and Selection Styles */
+.json-container:focus {
+	outline: 2px solid #0969da;
+	outline-offset: 2px;
+}
+
+.json-container::selection {
+	background-color: #264f78;
+}
+
+.json-container::-moz-selection {
+	background-color: #264f78;
+}
+
+/* Indentation Helper */
+.json-indent {
+	margin-left: 20px;
+}
+
+/* Error State Styling */
+.json-container.error {
+	border-color: #f85149;
+	background-color: #0d1117;
+}
+
+.json-error {
+	color: #f85149;
+	font-weight: bold;
+}
+
+/* Loading State */
+.json-container.loading {
+	background: linear-gradient(90deg, #1e1e1e 25%, #2a2a2a 50%, #1e1e1e 75%);
+	background-size: 200% 100%;
+	animation: loading 1.5s infinite;
+}
+
+@keyframes loading {
+	0% {
+		background-position: 200% 0;
+	}
+
+	100% {
+		background-position: -200% 0;
+	}
+}

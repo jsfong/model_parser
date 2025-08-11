@@ -1,4 +1,5 @@
 use serde::de::value::Error;
+use serde::Serialize;
 
 use crate::model::cubs_model::{Element, Relationship};
 
@@ -6,31 +7,39 @@ use super::cubs_model::ModelData;
 use std::collections::HashMap;
 use std::time::Instant;
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct ModelDictionary<'a> {
     pub model_id: String,
     pub version: u32,
-    pub elements_stats: Option<CubsObjectReport>,
-    pub relationships_stats: Option<CubsObjectReport>,
+
+    pub model_stats: ModelStats,
+    // pub elements_stats: Option<CubsObjectReport>,
+    // pub relationships_stats: Option<CubsObjectReport>,
 
     pub cubsobject_map: Option<ElementRefMap<'a>>,
     pub relationship_map: Option<RelationshipRefMap<'a>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
+pub struct ModelStats {
+    elements_stats: Option<CubsObjectReport>,
+    relationships_stats: Option<CubsObjectReport>,
+}
+
+#[derive(Debug, Serialize)]
 pub struct CubsObjectReport {
     all_count: u32,
     by_type: HashMap<String, u32>,
     by_nature: HashMap<String, u32>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct ElementRefMap<'a> {
     pub type_: HashMap<String, Vec<&'a Element>>,
     pub nature: HashMap<String, Vec<&'a Element>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct RelationshipRefMap<'a> {
     pub type_: HashMap<String, Vec<&'a Relationship>>,
     pub nature: HashMap<String, Vec<&'a Relationship>>,
@@ -92,24 +101,24 @@ impl<'a> ModelDictionary<'a> {
         ModelDictionary {
             model_id: model.model_id.clone(),
             version: model.version,
-            elements_stats: Some(CubsObjectReport {
-                all_count: model.elements.len() as u32,
-                by_type: cubs_obj_type_cout_map,
-                by_nature: cubs_obj_nature_cout_map,
-            }),
-            relationships_stats: Some(CubsObjectReport {
-                all_count: model.relationships.len() as u32,
-                by_type: rel_type_cout_map,
-                by_nature: rel_nature_cout_map,
-            }),
+            model_stats: ModelStats {
+                elements_stats: Some(CubsObjectReport {
+                    all_count: model.elements.len() as u32,
+                    by_type: cubs_obj_type_cout_map,
+                    by_nature: cubs_obj_nature_cout_map,
+                }),
+                
+                relationships_stats: Some(CubsObjectReport {
+                    all_count: model.relationships.len() as u32,
+                    by_type: rel_type_cout_map,
+                    by_nature: rel_nature_cout_map,
+                }),
+            },
             cubsobject_map: Some(cubsobject_partitioned_map),
             relationship_map: Some(relationship_partitioned_map),
         }
     }
 
-    pub fn get_elements_stats() -> Option<CubsObjectReport> {
-        None
-    }
 }
 
 // Helper method

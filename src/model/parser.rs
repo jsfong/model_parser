@@ -1,12 +1,13 @@
 use flate2::bufread::GzDecoder;
 use sqlx::{Pool, Postgres};
+use uuid::Uuid;
 use std::error::Error;
 use std::io::BufReader;
 use std::path::Path;
 use std::{fs::File, io::Read};
 use std::time::Instant;
-
 use super::cubs_model::{ModelData, ModelResponse};
+use anyhow::anyhow;
 
 #[derive(Debug, sqlx::FromRow)]
 struct SavedModel {
@@ -48,6 +49,17 @@ pub async fn read_model_data_from_db(
     pool: &Pool<Postgres>,
 ) -> Result<ModelData, Box<dyn Error>> {
     let start_time = Instant::now();
+    
+    println!("Retrievig {} model ...", &model_id);
+
+    // Check format
+    match Uuid::parse_str(&model_id){
+        Ok(_) => (),
+        Err(e) => {
+            eprintln!("Error parsing uuid string {}", e.to_string());
+            return Err(anyhow!("Model id is not uuid").into());
+        },
+    }
 
     // Retrieve from DB
     println!("Retreiving from DB ...");
