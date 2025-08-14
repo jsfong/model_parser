@@ -1,5 +1,6 @@
 use std::time::Instant;
 
+use crate::component::json_viewer;
 use leptos::{logging::log, prelude::*};
 use leptos_meta::{provide_meta_context, Stylesheet, Title};
 use leptos_router::{
@@ -8,7 +9,6 @@ use leptos_router::{
 };
 use serde::{de::value, Deserialize, Serialize};
 use serde_json::Value;
-use crate::component::json_viewer;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ServerResult {
@@ -138,10 +138,13 @@ pub async fn parse_model(model_id: String) -> Result<ServerResult, ServerFnError
 
     //Convert json string
     match serde_json::to_string_pretty(&dict.model_stats) {
-        Ok(result) => Ok(ServerResult {
-            value: result,
-            duration: elapsed_time.as_millis().to_string() + " ms",
-        }),
+        Ok(result) => {
+            // println!("XXX: {}", result);
+            Ok(ServerResult {
+                value: result,
+                duration: elapsed_time.as_millis().to_string() + " ms",
+            })
+        }
         Err(e) => {
             return Err(ServerFnError::ServerError(
                 "Unable to convert dict to json string".to_string(),
@@ -149,4 +152,3 @@ pub async fn parse_model(model_id: String) -> Result<ServerResult, ServerFnError
         }
     }
 }
-

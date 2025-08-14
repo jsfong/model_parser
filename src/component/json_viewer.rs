@@ -2,7 +2,7 @@ use leptos::{logging::log, prelude::*};
 use serde_json::Value;
 
 #[component]
-pub fn JsonValue  (value:Value, depth: usize) -> impl IntoView {
+pub fn JsonValue(value: Value, depth: usize) -> impl IntoView {
     let indent_style = format!("margin-left: {}px", depth * 1);
 
     match value {
@@ -50,18 +50,23 @@ pub fn JsonValue  (value:Value, depth: usize) -> impl IntoView {
                             "▼"
                         </span>
                         <span class="json-punctuation">"["</span>
-                        {if is_collapsed.get() { //No need move
-                            format!(" ... {} items ]", arr.len())
+
+                        <div class="json-keys-number">
+                        {
+                            let key_len = arr.len().clone();
+                            move || if is_collapsed.get() {
+                            format!(" ... {} keys ", key_len)
                         } else {
                             String::new()
                         }}
+                        </div>
                     </div>
 
                     <div
                         class="json-content"
                         class:collapsed=is_collapsed
                     >
-                    {   
+                    {
                         let arr_len = arr.len().clone();
                         arr.into_iter().enumerate().map(|(i, item)| {
                             let is_last = i == arr_len - 1;
@@ -100,6 +105,7 @@ pub fn JsonValue  (value:Value, depth: usize) -> impl IntoView {
 
             view! {
                 <div class="json-object">
+                    // <div class="json-line" style=indent_style.clone()>
                     <div class="json-line" style=indent_style.clone()>
                         <span
                             class="json-toggle"
@@ -108,13 +114,10 @@ pub fn JsonValue  (value:Value, depth: usize) -> impl IntoView {
                         >
                             "▼"
                         </span>
-                        <br />
 
-                       
+
                         <span class="json-punctuation">"{"</span>
-
-                     
-                        <div class="json-keys-number">
+                        <div class="json-keys-number" class:collapsed = move || !is_collapsed.get()>
                         {
                             let key_len = keys.len().clone();
                             move || if is_collapsed.get() {
@@ -123,7 +126,7 @@ pub fn JsonValue  (value:Value, depth: usize) -> impl IntoView {
                             String::new()
                         }}
                         </div>
-                        
+
                     </div>
 
                     <div

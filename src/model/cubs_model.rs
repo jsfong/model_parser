@@ -1,5 +1,6 @@
 use serde::{Deserialize, Deserializer, Serialize};
 use std::collections::HashMap;
+use serde_json::Value;
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -14,14 +15,16 @@ pub struct ModelData {
     pub model_id: String,
     pub site_model_id: String,
     pub version: u32,
-    #[serde(alias = "cubsObjects", deserialize_with = "null_to_empty_vec")]
-    pub elements: Vec<Element>,
-    #[serde(deserialize_with = "null_to_empty_vec")]
-    pub relationships: Vec<Relationship>,
+    // #[serde(alias = "cubsObjects", deserialize_with = "null_to_empty_vec")]
+    #[serde(alias = "cubsObjects")]
+    pub elements: Value,
+    // #[serde(deserialize_with = "null_to_empty_vec")]
+    pub relationships: Value,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
+
 pub struct Element {
     pub id: String,
     #[serde(alias = "type")]
@@ -55,11 +58,14 @@ pub struct Relationship {
     #[serde(flatten)]
     pub core_facets: HashMap<String, serde_json::Value>,
 }
-fn null_to_empty_vec<'de, D, T>(deserializer: D) -> Result<Vec<T>, D::Error>
-where
-    D: Deserializer<'de>,
-    T: Deserialize<'de>,
-{
-    let opt = Option::<Vec<T>>::deserialize(deserializer)?;
-    Ok(opt.unwrap_or_default())
-}
+
+
+// fn null_to_empty_vec<'de, D, T>(deserializer: D) -> Result<Vec<T>, D::Error>
+// where
+//     D: Deserializer<'de>,
+//     T: Deserialize<'de>,
+// {
+//     let opt = Option::<Vec<T>>::deserialize(deserializer)?;
+//     Ok(opt.unwrap_or_default())
+// }
+
