@@ -28,87 +28,90 @@ body {
     margin-bottom: 20px;
 }
 
-.json-input {
-    width: 100%;
-    height: 200px;
-    background: #252526;
-    color: #d4d4d4;
-    border: 1px solid #3e3e42;
-    border-radius: 8px;
-    padding: 15px;
-    font-family: inherit;
-    font-size: 14px;
-    resize: vertical;
-    box-sizing: border-box;
-}
-
-.json-input:focus {
-    outline: none;
-    border-color: #007acc;
-    box-shadow: 0 0 0 2px rgba(0, 122, 204, 0.2);
-}
-
-.json-container {
-    background: #252526;
-    border-radius: 8px;
-    padding: 20px;
-    border: 1px solid #3e3e42;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    overflow-x: auto;
-}
-
 .json-viewer {
-    line-height: 1.6;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
     font-size: 12px;
-    min-height: 100px;
+    line-height: 1.4;
+    background-color: #ffffff;
+    border: 1px solid #e1e4e8;
+    border-radius: 6px;
+    padding: 16px;
+    max-height: 500px;
+    overflow: auto;
+    color: #24292e;
 }
 
-.json-keys-number {
-    font-size: 11px;
-    color: rgb(161, 158, 158);
+.json-toggle {
+    cursor: pointer;
+    user-select: none;
+    color: #6a737d;
+    margin-right: 4px;
+    display: inline-block;
+    width: 12px;
+    font-size: 10px;
 }
 
-/* JSON syntax highlighting */
+.json-toggle:hover {
+    color: #0366d6;
+}
+
+.json-brace {
+    color: #d369ed;
+    font-weight: bold;
+}
+
+.json-object-content.collapsed,
+.json-array-content.collapsed {
+    display: none;
+}
+
+.json-property {
+    margin-left: 16px;
+}
+
+.json-array-item {
+    margin-left: 16px;
+}
+
 .json-key {
-    color: #9cdcfe;
-    font-weight: 100;
+    color: #032f62;
 }
 
-.json-string {
-    color: #ce9178;
+.json-key-text {
+    color: #032f62;
+    font-weight: 600;
+}
+
+.json-colon {
+    color: #6a737d;
+    margin: 0 4px;
+}
+
+.json-comma {
+    color: #756a7d;
+}
+
+.json-string .json-quote {
+    color: #032f62;
+}
+
+.json-string-content {
+    color: #032f62;
 }
 
 .json-number {
-    color: #b5cea8;
+    color: #005cc5;
+    font-weight: 500;
 }
 
 .json-boolean {
-    color: #569cd6;
-    font-weight: bold;
+    color: #d73a49;
+    font-weight: 500;
 }
 
 .json-null {
-    color: #569cd6;
-    font-weight: bold;
+    color: #6a737d;
     font-style: italic;
-}
-
-.json-punctuation {
-    color: #f4e810;
-}
-
-.json-error {
-    color: #f44747;
-    font-style: italic;
-}
-
-/* Structure */
-.json-line {
-    position: relative;
-    padding: 2px 0;
-    min-height: 1.6em;
-    display: flex;
-    align-items: flex-start;
 }
 
 .json-object,
@@ -116,97 +119,40 @@ body {
     position: relative;
 }
 
-.json-object-item,
-.json-array-item {
-    position: relative;
+/* Line numbers styling */
+.json-viewer {
+    counter-reset: line-number;
 }
 
-/* Collapsible functionality */
-.json-toggle {
-    cursor: pointer;
-    user-select: none;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 16px;
-    height: 16px;
-    margin-right: 8px;
-    color: #808080;
-    font-size: 12px;
-    transition: all 0.2s ease;
-    flex-shrink: 0;
+/* Scrollbar styling for webkit browsers */
+.json-viewer::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
 }
 
-.json-toggle:hover {
-    color: #d4d4d4;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 3px;
+.json-viewer::-webkit-scrollbar-track {
+    background: #f1f3f4;
+    border-radius: 4px;
 }
 
-.json-toggle.collapsed {
-    transform: rotate(-90deg);
+.json-viewer::-webkit-scrollbar-thumb {
+    background: #c1c8cd;
+    border-radius: 4px;
 }
 
-.json-content {
-    transition: all 0.3s ease;
-    overflow: hidden;
-}
-
-.json-content.collapsed {
-    display: none;
+.json-viewer::-webkit-scrollbar-thumb:hover {
+    background: #a8b2ba;
 }
 
 /* Hover effects */
-.json-key:hover {
-    background: rgba(156, 220, 254, 0.1);
-    border-radius: 3px;
-    padding: 1px 2px;
-    margin: -1px -2px;
+.json-property:hover {
+    background-color: rgba(3, 47, 98, 0.05);
+    border-radius: 2px;
 }
 
-.json-string:hover {
-    background: rgba(206, 145, 120, 0.1);
-    border-radius: 3px;
-    padding: 1px 2px;
-    margin: -1px -2px;
-}
-
-.json-number:hover {
-    background: rgba(181, 206, 168, 0.1);
-    border-radius: 3px;
-    padding: 1px 2px;
-    margin: -1px -2px;
-}
-
-.json-boolean:hover,
-.json-null:hover {
-    background: rgba(86, 156, 214, 0.1);
-    border-radius: 3px;
-    padding: 1px 2px;
-    margin: -1px -2px;
-}
-
-/* Nesting visual guides */
-.json-object > .json-content,
-.json-array > .json-content {
-    position: relative;
-}
-
-.json-object > .json-content::before,
-.json-array > .json-content::before {
-    content: '';
-    position: absolute;
-    left: 8px;
-    top: 0;
-    bottom: 0;
-    width: 1px;
-    background: #404040;
-    transition: background-color 0.2s ease;
-}
-
-.json-object:hover > .json-content::before,
-.json-array:hover > .json-content::before {
-    background: #007acc;
+.json-array-item:hover {
+    background-color: rgba(3, 47, 98, 0.05);
+    border-radius: 2px;
 }
 
 /* Responsive design */

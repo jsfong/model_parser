@@ -1,229 +1,150 @@
 use leptos::{logging::log, prelude::*};
 use serde_json::Value;
 
+const PADDING: i32 = 10;
+
 #[component]
-pub fn JsonValue(value: Value, depth: usize) -> impl IntoView {
-    let indent_style = format!("margin-left: {}px", depth * 1);
-
-    match value {
-        Value::Null => view! {
-            <div class="json-line" style=indent_style>
-                <span class="json-null">"null"</span>
+pub fn JsonViewer(json_value: Memo<Option<Value>>) -> impl IntoView {
+    view! {
+         <div class="json-container">
+            <div class="json-viewer">
+                {move || {
+                    if let Some(v) = json_value.get() {
+                        view! {<JsonNode value=v level=1 is_last=true  />}.into_any()
+                    }else{
+                        view! {<JsonNotFound />}.into_any()
+                    }
+                }}
             </div>
-        }
-        .into_any(),
-
-        Value::Bool(b) => view! {
-            <div class="json-line" style=indent_style>
-                <span class="json-boolean">{b.to_string()}</span>
-            </div>
-        }
-        .into_any(),
-
-        Value::Number(n) => view! {
-            <div class="json-line" style=indent_style>
-                <span class="json-number">{n.to_string()}</span>
-            </div>
-        }
-        .into_any(),
-
-        Value::String(s) => view! {
-            <div class="json-line" style=indent_style>
-                <span class="json-string">"\""</span>
-                <span class="json-string">{s}</span>
-                <span class="json-string">"\""</span>
-            </div>
-        }
-        .into_any(),
-
-        Value::Array(arr) => {
-            let (is_collapsed, set_is_collapsed) = create_signal(false);
-
-            view! {
-                <div class="json-array">
-                    <div class="json-line" style=indent_style.clone()>
-                        <span
-                            class="json-toggle"
-                            class:collapsed=is_collapsed
-                            on:click=move |_| set_is_collapsed.update(|c| *c = !*c)
-                        >
-                            "▼"
-                        </span>
-                        <span class="json-punctuation">"["</span>
-
-                        <div class="json-keys-number">
-                        {
-                            let key_len = arr.len().clone();
-                            move || if is_collapsed.get() {
-                            format!(" ... {} keys ", key_len)
-                        } else {
-                            String::new()
-                        }}
-                        </div>
-                    </div>
-
-                    <div
-                        class="json-content"
-                        class:collapsed=is_collapsed
-                    >
-                    {
-                        let arr_len = arr.len().clone();
-                        arr.into_iter().enumerate().map(|(i, item)| {
-                            let is_last = i == arr_len - 1;
-                            view! {
-                                <div class="json-array-item">
-                                    <JsonValue value=item depth=depth + 1 />
-                                    {if !is_last {
-                                        view! {
-                                            <span class="json-punctuation">","</span>
-                                        }.into_any()
-                                    } else {
-                                        view! { <span></span> }.into_any()
-                                    }}
-                                </div>
-                            }
-                        }).collect_view()}
-                    </div>
-
-                    {move || if !is_collapsed.get() {
-                        view! {
-                            <div class="json-line" style=indent_style.clone()>
-                                <span class="json-punctuation">"]"</span>
-                            </div>
-                        }.into_any()
-                    } else {
-                        view! { <div></div> }.into_any()
-                    }}
-                </div>
-            }
-            .into_any()
-        }
-
-        Value::Object(obj) => {
-            let (is_collapsed, set_is_collapsed) = create_signal(false);
-            let keys: Vec<(String, Value)> = obj.into_iter().collect();
-
-            view! {
-                <div class="json-object">
-                    // <div class="json-line" style=indent_style.clone()>
-                    <div class="json-line" style=indent_style.clone()>
-                        <span
-                            class="json-toggle"
-                            class:collapsed=is_collapsed
-                            on:click=move |_| set_is_collapsed.update(|c| *c = !*c)
-                        >
-                            "▼"
-                        </span>
-
-
-                        <span class="json-punctuation">"{"</span>
-                        <div class="json-keys-number" class:collapsed = move || !is_collapsed.get()>
-                        {
-                            let key_len = keys.len().clone();
-                            move || if is_collapsed.get() {
-                            format!(" ... {} keys ", key_len)
-                        } else {
-                            String::new()
-                        }}
-                        </div>
-
-                    </div>
-
-                    <div
-                        class="json-content"
-                        class:collapsed=is_collapsed
-                    >
-                        {   let key_len = keys.len().clone();
-                            keys.into_iter().enumerate().map(|(i, (key, value))| {
-                            let is_last = i == key_len - 1;
-                            let mut is_value = false;
-                            let key_indent = format!("margin-left: {}px", (depth + 1) * 5);
-
-                            view! {
-                                <div class="json-object-item">
-                                    <div class="json-line" style=key_indent>
-                                        <span class="json-key">"\""</span>
-                                        <span class="json-key">{key}</span>
-                                        <span class="json-key">"\""</span>
-                                        <span class="json-punctuation">": "</span>
-
-                                        {match value {
-                                            Value::Object(_) | Value::Array(_) => {
-                                                is_value = false;
-                                                view! {
-                                                    <div style="display: inline">
-                                                        <JsonValue value=value depth=depth + 1 />
-                                                    </div>
-                                                }.into_any()
-                                            },
-                                            _ => {
-                                                is_value = true;
-                                                view! {
-                                                    <div style="display: inline">
-                                                        <JsonValueInline value=value />
-                                                    </div>
-                                                }.into_any()
-                                            }
-                                        }}
-
-                                        {if !is_last && is_value{
-                                            view! {
-                                                <span class="json-punctuation">","</span>
-                                            }.into_any()
-                                        } else {
-                                            view! { <span></span> }.into_any()
-                                        }}
-                                    </div>
-                                </div>
-                            }
-                        }).collect_view()}
-                    </div>
-
-                    {move || if !is_collapsed.get() {
-                        view! {
-                            <div class="json-line" style=indent_style.clone()>
-                                <span class="json-punctuation">"}"</span>
-                            </div>
-                        }.into_any()
-                    } else {
-                        view! { <div></div> }.into_any()
-                    }}
-                </div>
-            }
-            .into_any()
-        }
+        </div>
     }
+
+
 }
 
+
 #[component]
-pub fn JsonValueInline(value: Value) -> impl IntoView {
+fn JsonNode(value: Value, level: i32, is_last: bool) -> impl IntoView {
+    let indent_style = format!("margin-left: {}px;", level * PADDING);
+    
     match value {
-        Value::Null => view! {
-            <span class="json-null">"null"</span>
+        Value::Object(obj) => {
+            let (is_collapsed, set_collapsed) = create_signal(false);
+            let entries: Vec<(String, Value)> = obj.into_iter().collect();
+            let obj_len = entries.len();
+            
+            if obj_len == 0 {
+                view! {
+                    <span>
+                        <span class="json-brace">"{}"</span>
+                        {if !is_last { Some(view! { <span class="json-comma">","</span> }) } else { None }}
+                    </span>
+                }.into_any()
+            } else {
+                view! {
+                    <div class="json-object">
+                        <span 
+                            class="json-toggle"
+                            on:click=move |_| set_collapsed.update(|c| *c = !*c)
+                        >
+                            {move || if is_collapsed.get() { "▶" } else { "▼" }}
+                        </span>
+                        <span class="json-brace">"{"</span>
+                        <div class="json-object-content" class:collapsed=is_collapsed>
+                            {entries.into_iter().enumerate().map(|(i, (key, val))| {
+                                let is_last_item = i == obj_len - 1;
+                                view! {
+                                    <div class="json-property" style=format!("margin-left: {}px;", (level ) * PADDING)>
+                                        <span class="json-key">"\""</span>
+                                        <span class="json-key-text">{key}</span>
+                                        <span class="json-key">"\""</span>
+                                        <span class="json-colon">": "</span>
+                                        <JsonNode value=val level=level + 1 is_last=is_last_item />
+                                    </div>
+                                }
+                            }).collect_view()}
+                            <div style=format!("margin-left: {}px;", PADDING + 5)>
+                                <span class="json-brace">"}"</span>
+                                {if !is_last { Some(view! { <span class="json-comma">","</span> }) } else { None }}
+                            </div>
+                        </div>
+                    </div>
+                }.into_any()
+            }
+        },
+        Value::Array(arr) => {
+            let (is_collapsed, set_collapsed) = create_signal(false);
+            let length = arr.len();
+            
+            if length == 0 {
+                view! {
+                    <span>
+                        <span class="json-brace">"[]"</span>
+                        {if !is_last { Some(view! { <span class="json-comma">","</span> }) } else { None }}
+                    </span>
+                }.into_any()
+            } else {
+                view! {
+                    <div class="json-array">
+                        <span 
+                            class="json-toggle"
+                            on:click=move |_| set_collapsed.update(|c| *c = !*c)
+                        >
+                            {move || if is_collapsed.get() { "▶" } else { "▼" }}
+                        </span>
+                        <span class="json-brace">"["</span>
+                        <div class="json-array-content" class:collapsed=is_collapsed>
+                            {arr.into_iter().enumerate().map(|(i, val)| {
+                                let is_last_item = i == length - 1;
+                                view! {
+                                    <div class="json-array-item" style=format!("margin-left: {}px;", (level + 1) * PADDING)>
+                                        <JsonNode value=val level=level + 1 is_last=is_last_item />
+                                    </div>
+                                }
+                            }).collect_view()}
+                            <div style=format!("margin-left: {}px;", level * 20)>
+                                <span class="json-brace">"]"</span>
+                                {if !is_last { Some(view! { <span class="json-comma">","</span> }) } else { None }}
+                            </div>
+                        </div>
+                    </div>
+                }.into_any()
+            }
+        },
+        Value::String(s) => {
+            view! {
+                <span class="json-string">
+                    <span class="json-quote">"\""</span>
+                    <span class="json-string-content">{s}</span>
+                    <span class="json-quote">"\""</span>
+                    {if !is_last { Some(view! { <span class="json-comma">","</span> }) } else { None }}
+                </span>
+            }.into_any()
+        },
+        Value::Number(n) => {
+            view! {
+                <span class="json-number">
+                    {n.to_string()}
+                    {if !is_last { Some(view! { <span class="json-comma">","</span> }) } else { None }}
+                </span>
+            }.into_any()
+        },
+        Value::Bool(b) => {
+            view! {
+                <span class="json-boolean">
+                    {b.to_string()}
+                    {if !is_last { Some(view! { <span class="json-comma">","</span> }) } else { None }}
+                </span>
+            }.into_any()
+        },
+        Value::Null => {
+            view! {
+                <span class="json-null">
+                    "null"
+                    {if !is_last { Some(view! { <span class="json-comma">","</span> }) } else { None }}
+                </span>
+            }.into_any()
         }
-        .into_any(),
-
-        Value::Bool(b) => view! {
-            <span class="json-boolean">{b.to_string()}</span>
-        }
-        .into_any(),
-
-        Value::Number(n) => view! {
-            <span class="json-number">{n.to_string()}</span>
-        }
-        .into_any(),
-
-        Value::String(s) => view! {
-            <span class="json-string">"\""</span>
-            <span class="json-string">{s}</span>
-            <span class="json-string">"\""</span>
-        }
-        .into_any(),
-
-        _ => view! {
-            <span class="json-error">"Complex value"</span>
-        }
-        .into_any(),
     }
 }
 

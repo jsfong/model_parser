@@ -1,6 +1,6 @@
 use std::time::Instant;
 
-use crate::component::json_viewer;
+use crate::component::json_viewer::{self, JsonViewer};
 use leptos::{logging::log, prelude::*};
 use leptos_meta::{provide_meta_context, Stylesheet, Title};
 use leptos_router::{
@@ -12,7 +12,8 @@ use serde_json::Value;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ServerResult {
-    pub value: String,
+    pub stats: String,
+    pub elements: String,
     pub duration: String,
 }
 
@@ -47,14 +48,17 @@ fn HomePage() -> impl IntoView {
     // Creates a reactive value to update the button
     let parse_model_action = ServerAction::<ParseModel>::new();
     let value = parse_model_action.value();
+    let (stats, set_stats) = signal("".to_string());
     let (result, set_result) = signal("".to_string());
     let (duration, set_duration) = signal("".to_string());
 
-    let parsed_json = Memo::new(move |_| serde_json::from_str::<Value>(&result.get()).ok());
+    let parsed_json_stats = Memo::new(move |_| serde_json::from_str::<Value>(&stats.get()).ok());
+    let parsed_json_elements = Memo::new(move |_| serde_json::from_str::<Value>(&result.get()).ok());
 
     Effect::new(move |_| {
         if let Some(Ok(result)) = value.get() {
-            set_result.set(result.value);
+            set_stats.set(result.stats);
+            set_result.set(result.elements);
             set_duration.set(result.duration);
         }
     });
@@ -70,18 +74,8 @@ fn HomePage() -> impl IntoView {
         </ActionForm>
 
         <br />
-        // Json Result
-        <div class="json-container">
-            <div class="json-viewer">
-                {move || {
-                    if let Some(parsed_json) = parsed_json.get() {
-                        view! {<json_viewer::JsonValue value=parsed_json depth=1 />}.into_any()
-                    }else{
-                        view! {<json_viewer::JsonNotFound />}.into_any()
-                    }
-                }}
-            </div>
-        </div>
+        <json_viewer::JsonViewer json_value=parsed_json_stats />
+    
         <div> "Duration: " {duration}</div>
 
     }
@@ -137,18 +131,13 @@ pub async fn parse_model(model_id: String) -> Result<ServerResult, ServerFnError
     let elapsed_time = start_time.elapsed();
 
     //Convert json string
-    match serde_json::to_string_pretty(&dict.model_stats) {
-        Ok(result) => {
-            // println!("XXX: {}", result);
-            Ok(ServerResult {
-                value: result,
-                duration: elapsed_time.as_millis().to_string() + " ms",
-            })
-        }
-        Err(e) => {
-            return Err(ServerFnError::ServerError(
-                "Unable to convert dict to json string".to_string(),
-            ))
-        }
-    }
+
+    let model_stats = serde_json::to_string_pretty(&dict.model_stats).unwrap();
+    let elements = serde_json::to_string_pretty(&model_data.elements).unwrap();
+
+    Ok(ServerResult {
+        stats: model_stats,
+        elements,
+        duration: elapsed_time.as_millis().to_string() + " ms",
+    })
 }
