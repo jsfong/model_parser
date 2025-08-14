@@ -4,13 +4,13 @@ use serde_json::Value;
 const PADDING: i32 = 10;
 
 #[component]
-pub fn JsonViewer(json_value: Memo<Option<Value>>) -> impl IntoView {
+pub fn JsonViewer(json_value: Memo<Option<Value>>, collapsed: bool) -> impl IntoView {
     view! {
          <div class="json-container">
             <div class="json-viewer">
                 {move || {
                     if let Some(v) = json_value.get() {
-                        view! {<JsonNode value=v level=1 is_last=true  />}.into_any()
+                        view! {<JsonNode value=v level=1 is_last=true  collapsed=collapsed/>}.into_any()
                     }else{
                         view! {<JsonNotFound />}.into_any()
                     }
@@ -24,12 +24,12 @@ pub fn JsonViewer(json_value: Memo<Option<Value>>) -> impl IntoView {
 
 
 #[component]
-fn JsonNode(value: Value, level: i32, is_last: bool) -> impl IntoView {
+fn JsonNode(value: Value, level: i32, is_last: bool, collapsed: bool) -> impl IntoView {
     let indent_style = format!("margin-left: {}px;", level * PADDING);
     
     match value {
         Value::Object(obj) => {
-            let (is_collapsed, set_collapsed) = create_signal(false);
+            let (is_collapsed, set_collapsed) = create_signal(collapsed);
             let entries: Vec<(String, Value)> = obj.into_iter().collect();
             let obj_len = entries.len();
             
@@ -59,7 +59,7 @@ fn JsonNode(value: Value, level: i32, is_last: bool) -> impl IntoView {
                                         <span class="json-key-text">{key}</span>
                                         <span class="json-key">"\""</span>
                                         <span class="json-colon">": "</span>
-                                        <JsonNode value=val level=level + 1 is_last=is_last_item />
+                                        <JsonNode value=val level=level + 1 is_last=is_last_item collapsed=collapsed />
                                     </div>
                                 }
                             }).collect_view()}
@@ -98,7 +98,7 @@ fn JsonNode(value: Value, level: i32, is_last: bool) -> impl IntoView {
                                 let is_last_item = i == length - 1;
                                 view! {
                                     <div class="json-array-item" style=format!("margin-left: {}px;", (level + 1) * PADDING)>
-                                        <JsonNode value=val level=level + 1 is_last=is_last_item />
+                                        <JsonNode value=val level=level + 1 is_last=is_last_item collapsed=collapsed />
                                     </div>
                                 }
                             }).collect_view()}

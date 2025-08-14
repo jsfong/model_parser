@@ -53,7 +53,8 @@ fn HomePage() -> impl IntoView {
     let (duration, set_duration) = signal("".to_string());
 
     let parsed_json_stats = Memo::new(move |_| serde_json::from_str::<Value>(&stats.get()).ok());
-    let parsed_json_elements = Memo::new(move |_| serde_json::from_str::<Value>(&result.get()).ok());
+    let parsed_json_elements =
+        Memo::new(move |_| serde_json::from_str::<Value>(&result.get()).ok());
 
     Effect::new(move |_| {
         if let Some(Ok(result)) = value.get() {
@@ -74,8 +75,9 @@ fn HomePage() -> impl IntoView {
         </ActionForm>
 
         <br />
-        <json_viewer::JsonViewer json_value=parsed_json_stats />
-    
+        <json_viewer::JsonViewer json_value=parsed_json_stats collapsed=false/>
+        <json_viewer::JsonViewer json_value=parsed_json_elements collapsed=true/>
+
         <div> "Duration: " {duration}</div>
 
     }
@@ -128,12 +130,12 @@ pub async fn parse_model(model_id: String) -> Result<ServerResult, ServerFnError
 
     //Build stats
     let dict = model_dict::ModelDictionary::from(&model_data);
-    let elapsed_time = start_time.elapsed();
 
     //Convert json string
-
     let model_stats = serde_json::to_string_pretty(&dict.model_stats).unwrap();
-    let elements = serde_json::to_string_pretty(&model_data.elements).unwrap();
+    let elements = serde_json::to_string_pretty(&model_data.elements_json_path("$[:1]")).unwrap();
+
+    let elapsed_time = start_time.elapsed();
 
     Ok(ServerResult {
         stats: model_stats,

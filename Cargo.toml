@@ -25,6 +25,8 @@ tokio = { version = "1.47.1", default-features = false, features = ["macros", "r
 cfg-if = "1.0.1"
 uuid = "1.17.0"
 anyhow = "1.0.98"
+jsonpath-rust = "1.0.4"
+leptos-use = "0.16.2"
 
 
 [features]

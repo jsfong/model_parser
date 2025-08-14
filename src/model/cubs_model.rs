@@ -1,6 +1,10 @@
+use jsonpath_rust::{parser::errors::JsonPathError, query::QueryRef, JsonPath};
+use leptos::prelude::StorageAccess;
 use serde::{Deserialize, Deserializer, Serialize};
+use serde_json::{json, Value};
 use std::collections::HashMap;
-use serde_json::Value;
+use std::error::Error;
+use std::time::Instant;
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -59,7 +63,29 @@ pub struct Relationship {
     pub core_facets: HashMap<String, serde_json::Value>,
 }
 
+impl ModelData {
+    pub fn elements_json_path(&self, query: &str) -> Vec<&Value> {
+         let start_time = Instant::now();
 
+        let result = self.elements.query_with_path(query);
+        let value: Vec<&Value> = match result {
+            Ok(v) => {
+                let values: Vec<&Value> = v.into_iter().map(|qref| qref.val()).collect();
+                values
+            }
+            Err(_) => vec![],
+        };
+
+        //Log time
+        let elapsed_time = start_time.elapsed();
+        println!(
+            "[Execution time] {} - {:?}",
+            "json path query", elapsed_time
+        );
+
+        value
+    }
+}
 // fn null_to_empty_vec<'de, D, T>(deserializer: D) -> Result<Vec<T>, D::Error>
 // where
 //     D: Deserializer<'de>,
@@ -68,4 +94,3 @@ pub struct Relationship {
 //     let opt = Option::<Vec<T>>::deserialize(deserializer)?;
 //     Ok(opt.unwrap_or_default())
 // }
-
