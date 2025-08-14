@@ -65,7 +65,8 @@ pub async fn read_model_data_from_db(
     println!("Retreiving from DB ...");
     let saved_model = sqlx::query_as!(
         SavedModel,
-        r#"SELECT model_id, vers_no, saved_gzip FROM cubs_object_model.saved_model WHERE model_id = $1"#,
+        r#"SELECT model_id, vers_no, saved_gzip FROM cubs_object_model.saved_model WHERE model_id = $1 ORDER BY vers_no DESC
+LIMIT 1"#,
         model_id
     )
     .fetch_one(pool)
@@ -75,9 +76,11 @@ pub async fn read_model_data_from_db(
     println!("Unzip ...");
     let decompressed_model = decompress_gzip_to_string(&saved_model.saved_gzip)?;
 
+
     //Convert to ModelData
     println!("Convert to internal format ...");
     let model_data = serde_json::from_str(&decompressed_model)?;
+
 
     //Log time
     let elapsed_time = start_time.elapsed();

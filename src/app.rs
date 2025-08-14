@@ -80,7 +80,6 @@ fn HomePage() -> impl IntoView {
                         view! {<json_viewer::JsonNotFound />}.into_any()
                     }
                 }}
-
             </div>
         </div>
         <div> "Duration: " {duration}</div>

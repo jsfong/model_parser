@@ -4,7 +4,7 @@ use serde::Serialize;
 use crate::model::cubs_model::{Element, Relationship};
 
 use super::cubs_model::ModelData;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::time::Instant;
 
 #[derive(Debug, Serialize)]
@@ -15,7 +15,6 @@ pub struct ModelDictionary<'a> {
     pub model_stats: ModelStats,
     // pub elements_stats: Option<CubsObjectReport>,
     // pub relationships_stats: Option<CubsObjectReport>,
-
     pub cubsobject_map: Option<ElementRefMap<'a>>,
     pub relationship_map: Option<RelationshipRefMap<'a>>,
 }
@@ -31,6 +30,7 @@ pub struct CubsObjectReport {
     all_count: u32,
     by_type: HashMap<String, u32>,
     by_nature: HashMap<String, u32>,
+    ordered_by_type: ElementCounts,
 }
 
 #[derive(Debug, Serialize)]
@@ -43,6 +43,30 @@ pub struct ElementRefMap<'a> {
 pub struct RelationshipRefMap<'a> {
     pub type_: HashMap<String, Vec<&'a Relationship>>,
     pub nature: HashMap<String, Vec<&'a Relationship>>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ElementCount {
+    element: String,
+    count: u32,
+}
+
+#[derive(Debug, Clone)]
+pub struct ElementCounts {
+    value: Vec<ElementCount>,
+}
+
+impl Serialize for ElementCounts {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer {
+        
+        let mut map = BTreeMap::new();
+        for element_count in &self.value {
+            map.insert(&element_count.element, element_count.count);
+        }
+         map.serialize(serializer)
+    }
 }
 
 impl<'a> ModelDictionary<'a> {
@@ -67,24 +91,24 @@ impl<'a> ModelDictionary<'a> {
 
         /* Generate stats */
         // CubsObject stats
-        let cubs_obj_type_cout_map = cubsobject_partitioned_map
+        let cubs_obj_type_cout_map: HashMap<String, u32> = cubsobject_partitioned_map
             .type_
             .iter()
             .map(|(k, v)| (k.clone(), v.len() as u32))
             .collect();
-        let cubs_obj_nature_cout_map = cubsobject_partitioned_map
+        let cubs_obj_nature_cout_map: HashMap<String, u32> = cubsobject_partitioned_map
             .nature
             .iter()
             .map(|(k, v)| (k.clone(), v.len() as u32))
             .collect();
 
         // Relationships stats
-        let rel_type_cout_map = relationship_partitioned_map
+        let rel_type_cout_map: HashMap<String, u32> = relationship_partitioned_map
             .type_
             .iter()
             .map(|(k, v)| (k.clone(), v.len() as u32))
             .collect();
-        let rel_nature_cout_map = relationship_partitioned_map
+        let rel_nature_cout_map: HashMap<String, u32> = relationship_partitioned_map
             .nature
             .iter()
             .map(|(k, v)| (k.clone(), v.len() as u32))
@@ -97,6 +121,25 @@ impl<'a> ModelDictionary<'a> {
             "ModelDictionary::from", elapsed_time
         );
 
+        //Ordered
+        let mut ordered_by_type: Vec<ElementCount> = cubs_obj_type_cout_map
+            .iter()
+            .map(|(k, v)| ElementCount {
+                element: k.clone(),
+                count: *v,
+            })
+            .collect();
+        ordered_by_type.sort_by(|a, b| b.count.cmp(&a.count));
+
+        let mut rel_ordered_by_type: Vec<ElementCount> = rel_nature_cout_map
+            .iter()
+            .map(|(k, v)| ElementCount {
+                element: k.clone(),
+                count: *v,
+            })
+            .collect();
+        rel_ordered_by_type.sort_by(|a, b| b.count.cmp(&a.count));
+
         // Construct output
         ModelDictionary {
             model_id: model.model_id.clone(),
@@ -106,19 +149,20 @@ impl<'a> ModelDictionary<'a> {
                     all_count: model.elements.len() as u32,
                     by_type: cubs_obj_type_cout_map,
                     by_nature: cubs_obj_nature_cout_map,
+                    ordered_by_type: ElementCounts { value: ordered_by_type },
                 }),
-                
+
                 relationships_stats: Some(CubsObjectReport {
                     all_count: model.relationships.len() as u32,
                     by_type: rel_type_cout_map,
                     by_nature: rel_nature_cout_map,
+                    ordered_by_type: ElementCounts { value: rel_ordered_by_type },
                 }),
             },
             cubsobject_map: Some(cubsobject_partitioned_map),
             relationship_map: Some(relationship_partitioned_map),
         }
     }
-
 }
 
 // Helper method
