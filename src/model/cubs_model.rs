@@ -1,9 +1,7 @@
-use jsonpath_rust::{parser::errors::JsonPathError, query::QueryRef, JsonPath};
-use leptos::prelude::StorageAccess;
-use serde::{Deserialize, Deserializer, Serialize};
-use serde_json::{json, Value};
+use jsonpath_rust::JsonPath;
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::collections::HashMap;
-use std::error::Error;
 use std::time::Instant;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -12,7 +10,7 @@ pub struct ModelResponse {
     pub data: ModelData,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ModelData {
     pub schema_version: String,

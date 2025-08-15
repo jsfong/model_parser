@@ -1,4 +1,4 @@
-use leptos::{logging::log, prelude::*};
+use leptos::{ prelude::*};
 use serde_json::Value;
 
 const PADDING: i32 = 10;
@@ -25,11 +25,11 @@ pub fn JsonViewer(json_value: Memo<Option<Value>>, collapsed: bool) -> impl Into
 
 #[component]
 fn JsonNode(value: Value, level: i32, is_last: bool, collapsed: bool) -> impl IntoView {
-    let indent_style = format!("margin-left: {}px;", level * PADDING);
+    // let indent_style = format!("margin-left: {}px;", level * PADDING);
     
     match value {
         Value::Object(obj) => {
-            let (is_collapsed, set_collapsed) = create_signal(collapsed);
+            let (is_collapsed, set_collapsed) = signal(collapsed);
             let entries: Vec<(String, Value)> = obj.into_iter().collect();
             let obj_len = entries.len();
             
@@ -73,7 +73,7 @@ fn JsonNode(value: Value, level: i32, is_last: bool, collapsed: bool) -> impl In
             }
         },
         Value::Array(arr) => {
-            let (is_collapsed, set_collapsed) = create_signal(false);
+            let (is_collapsed, set_collapsed) = signal(false);
             let length = arr.len();
             
             if length == 0 {

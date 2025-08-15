@@ -3,6 +3,7 @@
 async fn main() -> std::io::Result<()> {
     use actix_files::Files;
     use actix_web::*;
+    use dotenv::dotenv;
     use leptos::prelude::*;
     use leptos::config::get_configuration;
     use leptos_meta::MetaTags;
@@ -12,11 +13,16 @@ async fn main() -> std::io::Result<()> {
     let conf = get_configuration(None).unwrap();
     let addr = conf.leptos_options.site_addr;
 
+    // Load env file
+    dotenv().ok();
+
     HttpServer::new(move || {
+
         // Generate the list of routes in your Leptos App
         let routes = generate_route_list(App);
         let leptos_options = &conf.leptos_options;
         let site_root = leptos_options.site_root.clone().to_string();
+
 
         println!("listening on http://{}", &addr);
 

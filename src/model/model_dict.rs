@@ -1,6 +1,6 @@
 use serde::Serialize;
 use serde_json::Value;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
 use std::time::Instant;
 
 use crate::model::cubs_model::{Element, Relationship};
@@ -118,48 +118,48 @@ impl ModelDictionary {
 }
 
 // Helper method
-fn insert_count(count_map: &mut HashMap<String, u32>, key: String, value: u32) {
-    match count_map.get_mut(&key) {
-        Some(count) => *count += value,
-        None => {
-            count_map.insert(key, value);
-        }
-    }
-}
+// fn insert_count(count_map: &mut HashMap<String, u32>, key: String, value: u32) {
+//     match count_map.get_mut(&key) {
+//         Some(count) => *count += value,
+//         None => {
+//             count_map.insert(key, value);
+//         }
+//     }
+// }
 
-fn generate_element_ref_map<'a, F>(
-    key_getter: F,
-    element: &Vec<Element>,
-) -> HashMap<String, Vec<&Element>>
-where
-    F: Fn(&Element) -> String,
-{
-    let element_partitioned_map: HashMap<String, Vec<&Element>> =
-        element.iter().fold(HashMap::new(), |mut acc, e| {
-            let key = key_getter(e);
-            let value = acc.entry(key).or_insert_with(|| Vec::new());
-            value.push(&e);
-            acc
-        });
-    element_partitioned_map
-}
+// fn generate_element_ref_map<'a, F>(
+//     key_getter: F,
+//     element: &Vec<Element>,
+// ) -> HashMap<String, Vec<&Element>>
+// where
+//     F: Fn(&Element) -> String,
+// {
+//     let element_partitioned_map: HashMap<String, Vec<&Element>> =
+//         element.iter().fold(HashMap::new(), |mut acc, e| {
+//             let key = key_getter(e);
+//             let value = acc.entry(key).or_insert_with(|| Vec::new());
+//             value.push(&e);
+//             acc
+//         });
+//     element_partitioned_map
+// }
 
-fn generate_relationship_ref_map<'a, F>(
-    key_getter: F,
-    element: &Vec<Relationship>,
-) -> HashMap<String, Vec<&Relationship>>
-where
-    F: Fn(&Relationship) -> String,
-{
-    let element_partitioned_map: HashMap<String, Vec<&Relationship>> =
-        element.iter().fold(HashMap::new(), |mut acc, e| {
-            let key = key_getter(e);
-            let value = acc.entry(key).or_insert_with(|| Vec::new());
-            value.push(&e);
-            acc
-        });
-    element_partitioned_map
-}
+// fn generate_relationship_ref_map<'a, F>(
+//     key_getter: F,
+//     element: &Vec<Relationship>,
+// ) -> HashMap<String, Vec<&Relationship>>
+// where
+//     F: Fn(&Relationship) -> String,
+// {
+//     let element_partitioned_map: HashMap<String, Vec<&Relationship>> =
+//         element.iter().fold(HashMap::new(), |mut acc, e| {
+//             let key = key_getter(e);
+//             let value = acc.entry(key).or_insert_with(|| Vec::new());
+//             value.push(&e);
+//             acc
+//         });
+//     element_partitioned_map
+// }
 
 pub fn generate_array_field_count(value: &Value, field_name: &str) -> Option<ElementCounts> {
     let array = value.as_array()?;

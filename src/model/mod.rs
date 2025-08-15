@@ -4,3 +4,5 @@ pub mod model_dict;
 pub mod parser;
 #[cfg(feature = "ssr")]
 pub mod database_util;
+#[cfg(feature = "ssr")]
+pub mod cache;

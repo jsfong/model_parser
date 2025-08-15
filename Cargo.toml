@@ -27,6 +27,8 @@ uuid = "1.17.0"
 anyhow = "1.0.98"
 jsonpath-rust = "1.0.4"
 leptos-use = "0.16.2"
+quick_cache = { version = "0.6.16", optional = true }
+once_cell = { version = "1.21.3", optional = true }
 
 
 [features]
@@ -40,6 +42,8 @@ ssr = [
   "leptos_meta/ssr",
   "leptos_router/ssr",
   "dep:sqlx",
+  "dep:quick_cache",
+  "dep:once_cell",
 ]
 
 # Defines a size-optimized profile for the WASM bundle in release mode

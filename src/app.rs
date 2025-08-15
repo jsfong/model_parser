@@ -1,13 +1,11 @@
-use std::time::Instant;
-
-use crate::component::json_viewer::{self, JsonViewer};
-use leptos::{logging::log, prelude::*};
+use crate::component::json_viewer::{self};
+use leptos::{prelude::*};
 use leptos_meta::{provide_meta_context, Stylesheet, Title};
 use leptos_router::{
     components::{Route, Router, Routes},
     StaticSegment, WildcardSegment,
 };
-use serde::{de::value, Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -107,20 +105,22 @@ fn NotFound() -> impl IntoView {
 
 #[server(ParseModel, "/api")]
 pub async fn parse_model(model_id: String) -> Result<ServerResult, ServerFnError> {
-    log!("Parsing model with id {}", model_id);
+    log!("[parse_model] Parsing model with id {}", model_id);
     use crate::model::database_util;
     use crate::model::model_dict;
     use crate::model::parser;
+    use std::time::Instant;
+    use leptos::{logging::log};
     let start_time = Instant::now();
 
     //Connect to DB
     let db_pool = database_util::connect_to_db().await;
 
     // Read saved model
-    let model_data = parser::read_model_data_from_db(&model_id, &db_pool).await;
+    let model_data = parser::read_model_data(&model_id, &db_pool).await;
     let model_data = match model_data {
         Ok(model_data) => model_data,
-        Err(e) => {
+        Err(_) => {
             eprintln!("Unable to read saved Model");
             return Err(ServerFnError::ServerError(
                 "Unable to read saved Model".to_string(),
@@ -136,6 +136,8 @@ pub async fn parse_model(model_id: String) -> Result<ServerResult, ServerFnError
     let elements = serde_json::to_string_pretty(&model_data.elements_json_path("$[:1]")).unwrap();
 
     let elapsed_time = start_time.elapsed();
+
+    log!("[parse_model] Parsing model with id {} \n", model_id);
 
     Ok(ServerResult {
         stats: model_stats,

@@ -5,11 +5,8 @@ use std::{env, time::Duration};
 
 /* DB */
 pub async fn connect_to_db() -> sqlx::Pool<sqlx::Postgres> {
-    dotenv().ok();
 
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-    println!("Connecting to db using url {} ...", database_url);
-
     let pg_pool = PgPoolOptions::new()
         .max_connections(5)
         .acquire_timeout(Duration::from_secs(10))//Max time to wait for a connection
