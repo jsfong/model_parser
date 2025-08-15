@@ -1,4 +1,4 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::time::Instant;
@@ -17,17 +17,17 @@ pub struct ModelDictionary {
     // pub relationship_map: Option<RelationshipRefMap<'a>>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct ModelStats {
     pub elements_stats: Option<CubsObjectReport>,
     pub relationships_stats: Option<CubsObjectReport>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct CubsObjectReport {
-    all_count: u32,
-    by_type: ElementCounts,
-    by_nature: ElementCounts,
+    pub all_count: u32,
+    pub by_type: ElementCounts,
+    pub by_nature: ElementCounts,
 }
 
 #[derive(Debug, Serialize)]
@@ -42,39 +42,17 @@ pub struct RelationshipRefMap<'a> {
     pub nature: HashMap<String, Vec<&'a Relationship>>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ElementCount {
-    element: String,
-    count: u32,
+    pub element: String,
+    pub count: u32,
 }
 
-#[derive(Debug, Clone, Default, Serialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ElementCounts {
-    value: Vec<ElementCount>,
+   pub value: Vec<ElementCount>,
 }
 
-// impl Serialize for ElementCounts {
-//     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-//     where
-//         S: serde::Serializer,
-//     {
-//         let mut map = BTreeMap::new();
-//         for element_count in &self.value {
-//             map.insert(&element_count.element, element_count.count);
-//         }
-//         map.serialize(serializer)
-//     }
-// }
-
-impl Serialize for ElementCount {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer {
-        let mut map = HashMap::new();
-        map.insert(&self.element, &self.count);
-        map.serialize(serializer)
-    }
-}
 impl ModelDictionary {
     pub fn from(model: &ModelData) -> Self {
         let start_time = Instant::now();

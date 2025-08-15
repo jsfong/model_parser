@@ -1,5 +1,6 @@
-use crate::component::json_viewer::{self};
-use leptos::{prelude::*};
+use crate::component::{model_stats_viewer, json_viewer::{self}};
+use leptos::prelude::*;
+use leptos::logging::log;
 use leptos_meta::{provide_meta_context, Stylesheet, Title};
 use leptos_router::{
     components::{Route, Router, Routes},
@@ -50,15 +51,23 @@ fn HomePage() -> impl IntoView {
     let (result, set_result) = signal("".to_string());
     let (duration, set_duration) = signal("".to_string());
 
-    let parsed_json_stats = Memo::new(move |_| serde_json::from_str::<Value>(&stats.get()).ok());
+    let parsed_json_stats = Memo::new(move |_| {
+        let stats_str = stats.get();
+        log!("[HomePage] Stats string: {:?}", stats_str);
+        let parsed = serde_json::from_str::<Value>(&stats_str).ok();
+        log!("[HomePage] Parsed stats: {:?}", parsed);
+        parsed
+    });
     let parsed_json_elements =
         Memo::new(move |_| serde_json::from_str::<Value>(&result.get()).ok());
 
     Effect::new(move |_| {
         if let Some(Ok(result)) = value.get() {
-            set_stats.set(result.stats);
-            set_result.set(result.elements);
-            set_duration.set(result.duration);
+            log!("[HomePage] Server result received: {:?}", result);
+            set_stats.set(result.stats.clone());
+            set_result.set(result.elements.clone());
+            set_duration.set(result.duration.clone());
+            log!("[HomePage] Set stats to: {:?}", result.stats);
         }
     });
 
@@ -67,17 +76,36 @@ fn HomePage() -> impl IntoView {
         <br/>
 
         // Input
-        <ActionForm action=parse_model_action>
-          <input type="text" name="model_id" placeholder="Model Id" size=40 value="aa5bc4b2-156f-4bad-b13a-4ccf31df53ca"/>
-          <button type="submit">Read model</button>
+        <ActionForm action=parse_model_action >
+            <div class="flex-cmd-parent">
+                <input type="text" name="model_id" placeholder="Model Id" size=40 value="aa5bc4b2-156f-4bad-b13a-4ccf31df53ca" class="flex-cmd-model-id"/>
+                <label for="vers">Version No: </label>
+                <select id="vers" name="vers_no">
+                    <option value="">Empty</option>
+                </select>
+                <button type="submit" class="flex-cmd-item">Read model</button>
+            </div>
         </ActionForm>
 
+
         <br />
-        <json_viewer::JsonViewer json_value=parsed_json_stats collapsed=false/>
-        <json_viewer::JsonViewer json_value=parsed_json_elements collapsed=true/>
 
-        <div> "Duration: " {duration}</div>
+        //View
+        <div class="flex-container">
 
+            // Json viewerr
+            <div class="flex-container-view">
+                <json_viewer::JsonViewer json_value=parsed_json_stats collapsed=false/>
+                <json_viewer::JsonViewer json_value=parsed_json_elements collapsed=true/>
+
+                <div> "Duration: " {duration}</div>
+            </div>
+
+            // RHS
+            <div class="flex-container-rhs">
+                <model_stats_viewer::ModelStatsViewer model_stats=parsed_json_stats />
+            </div>
+        </div>
     }
 }
 
@@ -109,8 +137,8 @@ pub async fn parse_model(model_id: String) -> Result<ServerResult, ServerFnError
     use crate::model::database_util;
     use crate::model::model_dict;
     use crate::model::parser;
+    use leptos::logging::log;
     use std::time::Instant;
-    use leptos::{logging::log};
     let start_time = Instant::now();
 
     //Connect to DB
