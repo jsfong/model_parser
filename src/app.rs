@@ -1,6 +1,9 @@
-use crate::component::{model_stats_viewer, json_viewer::{self}};
-use leptos::prelude::*;
+use crate::component::{
+    json_viewer::{self},
+    model_stats_viewer,
+};
 use leptos::logging::log;
+use leptos::{html::Q, prelude::*};
 use leptos_meta::{provide_meta_context, Stylesheet, Title};
 use leptos_router::{
     components::{Route, Router, Routes},
@@ -11,8 +14,14 @@ use serde_json::Value;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ServerResult {
+    pub model_id: String,
     pub stats: String,
-    pub elements: String,
+    pub duration: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, Default)]
+pub struct QueryResult {
+    pub data: String,
     pub duration: String,
 }
 
@@ -47,15 +56,20 @@ fn HomePage() -> impl IntoView {
     // Creates a reactive value to update the button
     let parse_model_action = ServerAction::<ParseModel>::new();
     let value = parse_model_action.value();
+
+    let query_model_action = ServerAction::<QueryModel>::new();
+    let query_value = query_model_action.value();
+
+    // Signal
+    let (model_id, set_model_id) = signal("".to_string());
     let (stats, set_stats) = signal("".to_string());
     let (result, set_result) = signal("".to_string());
     let (duration, set_duration) = signal("".to_string());
+    let (query, set_query) = signal("".to_string());
 
     let parsed_json_stats = Memo::new(move |_| {
         let stats_str = stats.get();
-        log!("[HomePage] Stats string: {:?}", stats_str);
         let parsed = serde_json::from_str::<Value>(&stats_str).ok();
-        log!("[HomePage] Parsed stats: {:?}", parsed);
         parsed
     });
     let parsed_json_elements =
@@ -64,12 +78,21 @@ fn HomePage() -> impl IntoView {
     Effect::new(move |_| {
         if let Some(Ok(result)) = value.get() {
             log!("[HomePage] Server result received: {:?}", result);
+            set_model_id.set(result.model_id.clone());
             set_stats.set(result.stats.clone());
-            set_result.set(result.elements.clone());
             set_duration.set(result.duration.clone());
-            log!("[HomePage] Set stats to: {:?}", result.stats);
+            set_query.set(String::new());
         }
     });
+
+    Effect::new(move |_| {
+        if let Some(Ok(result)) = query_value.get() {
+            log!("[HomePage] Query result received: {:?}", result);
+            set_query.set(result.data);
+            set_duration.set(result.duration);
+        }
+    });
+    let parsed_query = Memo::new(move |_| serde_json::from_str::<Value>(&query.get()).ok());
 
     view! {
         <h1>"Model Parser"</h1>
@@ -78,6 +101,7 @@ fn HomePage() -> impl IntoView {
         // Input
         <ActionForm action=parse_model_action >
             <div class="flex-cmd-parent">
+                <label for="model_id">Model Id: </label>
                 <input type="text" name="model_id" placeholder="Model Id" size=40 value="aa5bc4b2-156f-4bad-b13a-4ccf31df53ca" class="flex-cmd-model-id"/>
                 <label for="vers">Version No: </label>
                 <select id="vers" name="vers_no">
@@ -92,14 +116,31 @@ fn HomePage() -> impl IntoView {
 
         //View
         <div class="flex-container">
-
-            // Json viewerr
             <div class="flex-container-view">
-                <json_viewer::JsonViewer json_value=parsed_json_stats collapsed=false/>
-                <json_viewer::JsonViewer json_value=parsed_json_elements collapsed=true/>
 
-                <div> "Duration: " {duration}</div>
+            // Element query
+            { move ||
+
+                if !model_id.get().is_empty() {
+                    view! {
+                            <ActionForm action=query_model_action>
+                                <div>
+                                    <label for="query">Json Path Query: </label>
+                                    <input type="hidden" name="model_id" prop:value=model_id size=40 />
+                                    <input type="text" name="query" size=40 value=""/>
+                                    <button type="submit">Run Query</button>
+                                </div>
+                            </ActionForm>
+                            <json_viewer::JsonViewer json_value=parsed_query collapsed=false/>
+                            <div> "Duration: " {duration}</div>
+                        }.into_any()
+                    } else {
+                        view!{}.into_any()
+                    }
+                }
+
             </div>
+
 
             // RHS
             <div class="flex-container-rhs">
@@ -134,18 +175,14 @@ fn NotFound() -> impl IntoView {
 #[server(ParseModel, "/api")]
 pub async fn parse_model(model_id: String) -> Result<ServerResult, ServerFnError> {
     log!("[parse_model] Parsing model with id {}", model_id);
-    use crate::model::database_util;
     use crate::model::model_dict;
     use crate::model::parser;
     use leptos::logging::log;
     use std::time::Instant;
     let start_time = Instant::now();
 
-    //Connect to DB
-    let db_pool = database_util::connect_to_db().await;
-
     // Read saved model
-    let model_data = parser::read_model_data(&model_id, &db_pool).await;
+    let model_data = parser::read_model_data(&model_id).await;
     let model_data = match model_data {
         Ok(model_data) => model_data,
         Err(_) => {
@@ -161,15 +198,54 @@ pub async fn parse_model(model_id: String) -> Result<ServerResult, ServerFnError
 
     //Convert json string
     let model_stats = serde_json::to_string_pretty(&dict.model_stats).unwrap();
-    let elements = serde_json::to_string_pretty(&model_data.elements_json_path("$[:1]")).unwrap();
+    // let elements = serde_json::to_string_pretty(&model_data.elements_json_path("$[:1]")).unwrap();
 
     let elapsed_time = start_time.elapsed();
 
     log!("[parse_model] Parsing model with id {} \n", model_id);
 
     Ok(ServerResult {
+        model_id: model_id,
         stats: model_stats,
-        elements,
-        duration: elapsed_time.as_millis().to_string() + " ms",
+        duration: format!("Get model took {} ms", elapsed_time.as_millis().to_string()),
+    })
+}
+
+#[server(QueryModel, "/api")]
+pub async fn query_model(model_id: String, query: String) -> Result<QueryResult, ServerFnError> {
+    use crate::model::parser;
+    use leptos::logging::log;
+    use std::time::Instant;
+
+    if model_id.is_empty() || query.is_empty() {
+        return Ok(QueryResult::default());
+    }
+
+    log!(
+        "[query_model] Querying model: {} with query: {}",
+        model_id,
+        query
+    );
+
+    let start_time = Instant::now();
+
+    // Read saved model
+    let model_data = parser::read_model_data(&model_id).await;
+    let model_data = match model_data {
+        Ok(model_data) => model_data,
+        Err(_) => {
+            eprintln!("Unable to read saved Model");
+            return Err(ServerFnError::ServerError(
+                "Unable to read saved Model".to_string(),
+            ));
+        }
+    };
+
+    let elements = serde_json::to_string_pretty(&model_data.elements_json_path(&query)).unwrap();
+    let elapsed_time = start_time.elapsed();
+
+    Ok(QueryResult {
+        data: elements,
+       duration: format!("Query model took {} ms", elapsed_time.as_millis().to_string()),
     })
 }

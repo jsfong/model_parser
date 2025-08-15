@@ -1,4 +1,5 @@
 use crate::model::cache::{self, QuickCache};
+use crate::model::database_util;
 
 use super::cubs_model::{ModelData, ModelResponse};
 use anyhow::anyhow;
@@ -48,12 +49,17 @@ where
 
 async fn read_model_data_from_db(
     model_id: &String,
-    pool: &Pool<Postgres>,
     cache: &QuickCache,
 ) -> Result<ModelData, Box<dyn Error>> {
     let start_time = Instant::now();
 
-    println!("[read_model_data_from_db] Retrieving {} model from DB...", &model_id);
+    println!(
+        "[read_model_data_from_db] Retrieving {} model from DB...",
+        &model_id
+    );
+
+    //Connect to DB
+    let pool = database_util::connect_to_db().await;
 
     // Retrieve from DB
     println!("[read_model_data_from_db] Retreiving from DB ...");
@@ -63,7 +69,7 @@ async fn read_model_data_from_db(
 LIMIT 1"#,
         model_id
     )
-    .fetch_one(pool)
+    .fetch_one(&pool)
     .await?;
     println!(
         "[read_model_data_from_db]  Load saved model with model id: {} version: {} from DB",
@@ -93,7 +99,6 @@ LIMIT 1"#,
 
 pub async fn read_model_data(
     model_id: &String,
-    pool: &Pool<Postgres>,
 ) -> Result<ModelData, Box<dyn Error>> {
     let start_time = Instant::now();
 
@@ -103,7 +108,10 @@ pub async fn read_model_data(
     match Uuid::parse_str(&model_id) {
         Ok(_) => (),
         Err(e) => {
-            eprintln!("[read_model_data] Error parsing uuid string {}", e.to_string());
+            eprintln!(
+                "[read_model_data] Error parsing uuid string {}",
+                e.to_string()
+            );
             return Err(anyhow!("Model id is not uuid").into());
         }
     }
@@ -116,7 +124,7 @@ pub async fn read_model_data(
     }
 
     // Get from DB
-    let model_data = read_model_data_from_db(model_id, pool, &cache).await;
+    let model_data = read_model_data_from_db(model_id, &cache).await;
 
     //Log time
     let elapsed_time = start_time.elapsed();
