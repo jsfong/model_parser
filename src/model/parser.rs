@@ -97,9 +97,7 @@ LIMIT 1"#,
     Ok(model_data)
 }
 
-pub async fn read_model_data(
-    model_id: &String,
-) -> Result<ModelData, Box<dyn Error>> {
+pub async fn read_model_data(model_id: &String) -> Result<ModelData, Box<dyn Error>> {
     let start_time = Instant::now();
 
     println!("[read_model_data] Retrievig {} model ...", &model_id);
@@ -120,6 +118,13 @@ pub async fn read_model_data(
     let cache = cache::get_quick_cache();
     if let Some(cached_model_data) = cache.get(model_id) {
         println!("[read_model_data] Found model data {} in cache", model_id);
+
+        let elapsed_time = start_time.elapsed();
+        println!(
+            "[Execution time] {} - {:?}",
+            "read_model_data_from_cache", elapsed_time
+        );
+
         return Ok(cached_model_data);
     }
 

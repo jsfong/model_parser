@@ -1,6 +1,9 @@
 use jsonpath_rust::JsonPath;
+use leptos::html::A;
+use regex::Regex;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{Map, Value};
+use std::char;
 use std::collections::HashMap;
 use std::time::Instant;
 
@@ -61,10 +64,12 @@ pub struct Relationship {
     pub core_facets: HashMap<String, serde_json::Value>,
 }
 
+//TODO refactor using trait
 impl ModelData {
-    pub fn elements_json_path(&self, query: &str) -> Vec<&Value> {
-         let start_time = Instant::now();
+    pub fn execute_json_path_for_element(&self, query: &str) -> Vec<&Value> {
+        println!("[execute_json_path_for_element] executing json path query: {}", query);
 
+        let start_time = Instant::now();   
         let result = self.elements.query_with_path(query);
         let value: Vec<&Value> = match result {
             Ok(v) => {
@@ -77,18 +82,76 @@ impl ModelData {
         //Log time
         let elapsed_time = start_time.elapsed();
         println!(
-            "[Execution time] {} - {:?}",
-            "json path query", elapsed_time
+            "[Execution time] {} for query {}- {:?}",
+            "json path query", 
+            query,
+            elapsed_time,
         );
 
         value
     }
 }
-// fn null_to_empty_vec<'de, D, T>(deserializer: D) -> Result<Vec<T>, D::Error>
-// where
-//     D: Deserializer<'de>,
-//     T: Deserialize<'de>,
-// {
-//     let opt = Option::<Vec<T>>::deserialize(deserializer)?;
-//     Ok(opt.unwrap_or_default())
-// }
+
+pub fn truncate_value(values: Vec<&Value>, truncate_depth: usize) -> Vec<Value> {
+    let result = values
+        .iter()
+        .map(|v| truncate(&v, truncate_depth, 0))
+        .collect();
+
+    result
+}
+
+fn truncate(value: &Value, max_depth: usize, current_depth: usize) -> Value {
+    if current_depth >= max_depth {
+        return match value {
+            Value::Array(_) => Value::Null,
+            Value::Object(_) => Value::Null,
+            other => other.clone(),
+        };
+    }
+
+    match value {
+        Value::Array(arr) => {
+            let new_array: Vec<Value> = arr
+                .iter()
+                .map(|v| truncate(v, max_depth, current_depth + 1))
+                .collect();
+            Value::Array(new_array)
+        }
+
+        Value::Object(map) => {
+            let mut new_map = Map::new();
+            for (k, v) in map {
+                new_map.insert(k.clone(), truncate(v, max_depth, current_depth + 1));
+            }
+            Value::Object(new_map)
+        }
+        other => other.clone(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn test_truncate() {
+        // Test with a simple JSON object
+        let json = r#"{"a": 1, "b": {"c": 2}}"#;
+        let value: Value = serde_json::from_str(json).unwrap();
+        let result = truncate(&value, 2, 0);
+        let result_string = result.to_string();
+        assert_eq!(result_string, r#"{"a":1,"b":{"c":2}}"#);
+    }
+
+    #[test]
+    fn test_truncate2() {
+        // Test with a simple JSON object
+        let json = r#"{"a": 1,"b": {"c": {"d": 2}}}"#;
+        let value: Value = serde_json::from_str(json).unwrap();
+        let result = truncate(&value, 2, 0);
+        let result_string = result.to_string();
+        assert_eq!(result_string, r#"{"a":1,"b":{"c":null}}"#);
+    }
+}

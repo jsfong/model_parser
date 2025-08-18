@@ -29,6 +29,7 @@ jsonpath-rust = "1.0.4"
 leptos-use = "0.16.2"
 quick_cache = { version = "0.6.16", optional = true }
 once_cell = { version = "1.21.3", optional = true }
+regex = "1.11.1"
 
 
 [features]

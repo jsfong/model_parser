@@ -1,6 +1,9 @@
-use crate::component::{
-    json_viewer::{self},
-    model_stats_viewer,
+use crate::{
+    component::{
+        json_viewer::{self},
+        model_stats_viewer,
+    },
+    model::cubs_model::{self, ModelData},
 };
 use leptos::logging::log;
 use leptos::{html::Q, prelude::*};
@@ -9,7 +12,7 @@ use leptos_router::{
     components::{Route, Router, Routes},
     StaticSegment, WildcardSegment,
 };
-use serde::{Deserialize, Serialize};
+use serde::{de, Deserialize, Serialize};
 use serde_json::Value;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -118,6 +121,8 @@ fn HomePage() -> impl IntoView {
         <div class="flex-container">
             <div class="flex-container-view">
 
+
+            //TODO move into dedicate component
             // Element query
             { move ||
 
@@ -127,7 +132,11 @@ fn HomePage() -> impl IntoView {
                                 <div>
                                     <label for="query">Json Path Query: </label>
                                     <input type="hidden" name="model_id" prop:value=model_id size=40 />
-                                    <input type="text" name="query" size=40 value=""/>
+                                    <input type="text" name="query" size=40 value="$.*"/>
+                                    <label for="depth">Depth: </label>
+                                    <input type="number" id="depth" name="depth" min="0" max="100" step="1" value="3" />
+                                    <label for="limit">Limit: </label>
+                                    <input type="number" id="limit" name="limit" min="0" max="5000" step="1" value="100" />
                                     <button type="submit">Run Query</button>
                                 </div>
                             </ActionForm>
@@ -202,7 +211,10 @@ pub async fn parse_model(model_id: String) -> Result<ServerResult, ServerFnError
 
     let elapsed_time = start_time.elapsed();
 
-    log!("[parse_model] Parsing model with id {} \n", model_id);
+    log!(
+        "[parse_model] Successfully parse model with id {} \n",
+        model_id
+    );
 
     Ok(ServerResult {
         model_id: model_id,
@@ -212,19 +224,27 @@ pub async fn parse_model(model_id: String) -> Result<ServerResult, ServerFnError
 }
 
 #[server(QueryModel, "/api")]
-pub async fn query_model(model_id: String, query: String) -> Result<QueryResult, ServerFnError> {
+pub async fn query_model(
+    model_id: String,
+    query: String,
+    depth: usize,
+    limit: usize,
+) -> Result<QueryResult, ServerFnError> {
     use crate::model::parser;
     use leptos::logging::log;
     use std::time::Instant;
+    log!("[query_model] Parsing model with id {}", model_id);
 
     if model_id.is_empty() || query.is_empty() {
         return Ok(QueryResult::default());
     }
 
     log!(
-        "[query_model] Querying model: {} with query: {}",
+        "[query_model] Querying model: {} with query: {} with depth: {} with limit: {}",
         model_id,
-        query
+        query,
+        depth,
+        limit,
     );
 
     let start_time = Instant::now();
@@ -241,11 +261,43 @@ pub async fn query_model(model_id: String, query: String) -> Result<QueryResult,
         }
     };
 
-    let elements = serde_json::to_string_pretty(&model_data.elements_json_path(&query)).unwrap();
+    //Query
+    let query_result = model_data.execute_json_path_for_element(&query);
+
+    //Limit
+    let limit = match limit >= query_result.len() {
+        true => query_result.len(),
+        false => limit,
+    };
+
+    println!(
+        "[query_model] limiting total result of {} to {}",
+        query_result.len(),
+        limit
+    );
+    let limited_query_result: Vec<&Value> = query_result.iter().take(limit).copied().collect();
+
+    //Depth
+    println!("[query_model] truncating to depth {}", depth);
+    let elements = match depth > 0 {
+        true => {
+            let filtered_element = cubs_model::truncate_value(limited_query_result, depth);
+            serde_json::to_string_pretty(&filtered_element).unwrap()
+        }
+        false => serde_json::to_string_pretty(&query_result).unwrap(),
+    };
     let elapsed_time = start_time.elapsed();
+
+    log!(
+        "[parse_model] Successfully query model with id {} \n",
+        model_id
+    );
 
     Ok(QueryResult {
         data: elements,
-       duration: format!("Query model took {} ms", elapsed_time.as_millis().to_string()),
+        duration: format!(
+            "Query model took {} ms",
+            elapsed_time.as_millis().to_string()
+        ),
     })
 }
