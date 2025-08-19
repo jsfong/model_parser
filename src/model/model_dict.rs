@@ -3,9 +3,8 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::time::Instant;
 
-use crate::model::cubs_model::{Element, Relationship};
 use super::cubs_model::ModelData;
-
+use crate::model::cubs_model::{CusObject, Element, Relationship};
 
 #[derive(Debug, Serialize)]
 pub struct ModelDictionary {
@@ -50,7 +49,7 @@ pub struct ElementCount {
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ElementCounts {
-   pub value: Vec<ElementCount>,
+    pub value: Vec<ElementCount>,
 }
 
 impl ModelDictionary {
@@ -59,13 +58,13 @@ impl ModelDictionary {
 
         /* Generate stats */
         let element_type_count =
-            generate_array_field_count(&model.elements, "type").unwrap_or_default();
+            generate_element_count_by(&model.elements, |obj| obj.get_type()).unwrap_or_default();
         let element_nature_count =
-            generate_array_field_count(&model.elements, "nature").unwrap_or_default();
+            generate_element_count_by(&model.elements, |obj| obj.get_nature()).unwrap_or_default();
         let rel_type_count =
-            generate_array_field_count(&model.relationships, "type").unwrap_or_default();
+            generate_element_count_by(&model.relationships, |obj| obj.get_type()).unwrap_or_default();
         let rel_nature_count =
-            generate_array_field_count(&model.relationships, "nature").unwrap_or_default();
+             generate_element_count_by(&model.relationships, |obj| obj.get_nature()).unwrap_or_default();
 
         //Log time
         let elapsed_time = start_time.elapsed();
@@ -80,13 +79,13 @@ impl ModelDictionary {
             version: model.version,
             model_stats: ModelStats {
                 elements_stats: Some(CubsObjectReport {
-                    all_count: get_json_array_len(&model.elements),
+                    all_count: model.elements.len() as u32,
                     by_type: element_type_count,
                     by_nature: element_nature_count,
                 }),
 
                 relationships_stats: Some(CubsObjectReport {
-                    all_count: get_json_array_len(&model.relationships),
+                    all_count: model.relationships.len() as u32,
                     by_type: rel_type_count,
                     by_nature: rel_nature_count,
                 }),
@@ -171,6 +170,38 @@ fn get_json_array_len(value: &Value) -> u32 {
     } else {
         0
     }
+}
+
+pub fn generate_element_count_by<T, F>(
+    cubs_objects: &Vec<T>,
+    key_getter: F,
+) -> Option<ElementCounts>
+where
+    T: CusObject,
+    F: Fn(&T) -> String,
+{
+    // Partition into count map
+    let partition_map = cubs_objects.iter().fold(HashMap::new(), |mut acc, obj| {
+        let key = key_getter(obj);
+        let value = acc.entry(key).or_insert_with(|| 0u32);
+        *value += 1;
+        acc
+    });
+
+    if partition_map.is_empty() {
+        return None;
+    }
+
+    //Order with descending order
+    let mut element_counts: Vec<ElementCount> = partition_map
+        .into_iter()
+        .map(|(element, count)| ElementCount { element, count })
+        .collect();
+    element_counts.sort_by(|a, b| b.count.cmp(&a.count));
+
+    Some(ElementCounts {
+        value: element_counts,
+    })
 }
 
 #[cfg(test)]

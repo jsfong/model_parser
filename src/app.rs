@@ -3,7 +3,7 @@ use crate::{
         json_viewer::{self},
         model_stats_viewer,
     },
-    model::cubs_model::{self, ModelData},
+    model::cubs_model::{self, CusObject, Element, ModelData},
 };
 use leptos::logging::log;
 use leptos::{html::Q, prelude::*};
@@ -261,30 +261,41 @@ pub async fn query_model(
         }
     };
 
+    //TODO manual query + jsonapth
     //Query
-    let query_result = model_data.execute_json_path_for_element(&query);
+    // let query_result = model_data.execute_json_path_for_element(&query);
+    // let value = serde_json::to_value(model_data.elements).unwrap_or_default();
 
     //Limit
-    let limit = match limit >= query_result.len() {
-        true => query_result.len(),
+    let elements = model_data.elements;
+    let limit = match limit >= elements.len() {
+        true => elements.len(),
         false => limit,
     };
 
     println!(
         "[query_model] limiting total result of {} to {}",
-        query_result.len(),
+        elements.len(),
         limit
     );
-    let limited_query_result: Vec<&Value> = query_result.iter().take(limit).copied().collect();
+    let limited_query_result = &elements[0..limit].to_vec();
 
     //Depth
-    println!("[query_model] truncating to depth {}", depth);
+    println!("[query_model] truncating {} elements to depth {}", limited_query_result.len(), depth);
+
+    //Conver to Vec<Value>
+    let limited_query_result_value: Vec<Value> = limited_query_result
+        .iter()
+        .map(|e| serde_json::to_value(e).unwrap_or_default())
+        .filter(|v| *v != Value::Null)
+        .collect();
+
     let elements = match depth > 0 {
         true => {
-            let filtered_element = cubs_model::truncate_value(limited_query_result, depth);
+            let filtered_element = cubs_model::truncate_value(&limited_query_result_value, depth);
             serde_json::to_string_pretty(&filtered_element).unwrap()
         }
-        false => serde_json::to_string_pretty(&query_result).unwrap(),
+        false => serde_json::to_string_pretty(&limited_query_result).unwrap(),
     };
     let elapsed_time = start_time.elapsed();
 

@@ -1,7 +1,5 @@
 use jsonpath_rust::JsonPath;
-use leptos::html::A;
-use regex::Regex;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::{Map, Value};
 use std::char;
 use std::collections::HashMap;
@@ -20,16 +18,27 @@ pub struct ModelData {
     pub model_id: String,
     pub site_model_id: String,
     pub version: u32,
-    // #[serde(alias = "cubsObjects", deserialize_with = "null_to_empty_vec")]
+    #[serde(alias = "cubsObjects", deserialize_with = "null_to_empty_vec")]
     #[serde(alias = "cubsObjects")]
-    pub elements: Value,
-    // #[serde(deserialize_with = "null_to_empty_vec")]
-    pub relationships: Value,
+    pub elements: Vec<Element>,
+    // pub elements: Value,
+    #[serde(deserialize_with = "null_to_empty_vec")]
+    pub relationships: Vec<Relationship>,
+    // pub relationships: Value,
+}
+
+pub trait CusObject {
+    fn get_nature(&self) -> String;
+    fn get_type(&self) -> String;
+    fn get_id(&self) -> String;
+    fn get_name(&self) -> String;
+    fn get_dynamic_facet(&self) -> &HashMap<String, serde_json::Value>;
+    fn get_facet(&self) -> &HashMap<String, serde_json::Value>;
+    fn get_core_facet(&self) -> &HashMap<String, serde_json::Value>;
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
-
 pub struct Element {
     pub id: String,
     #[serde(alias = "type")]
@@ -45,7 +54,37 @@ pub struct Element {
     pub core_facets: HashMap<String, serde_json::Value>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+impl CusObject for Element {
+    fn get_nature(&self) -> String {
+        self.nature.clone()
+    }
+
+    fn get_type(&self) -> String {
+        self.type_.clone()
+    }
+
+    fn get_id(&self) -> String {
+        self.id.clone()
+    }
+
+    fn get_name(&self) -> String {
+        self.name.clone()
+    }
+
+    fn get_dynamic_facet(&self) -> &HashMap<String, serde_json::Value> {
+        &self.dynamic_facets
+    }
+
+    fn get_facet(&self) -> &HashMap<String, serde_json::Value> {
+        &self.facets
+    }
+
+    fn get_core_facet(&self) -> &HashMap<String, serde_json::Value> {
+        &self.core_facets
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Relationship {
     pub id: String,
@@ -64,38 +103,79 @@ pub struct Relationship {
     pub core_facets: HashMap<String, serde_json::Value>,
 }
 
-//TODO refactor using trait
-impl ModelData {
-    pub fn execute_json_path_for_element(&self, query: &str) -> Vec<&Value> {
-        println!("[execute_json_path_for_element] executing json path query: {}", query);
+impl CusObject for Relationship {
+    fn get_nature(&self) -> String {
+        self.nature.clone()
+    }
 
-        let start_time = Instant::now();   
-        let result = self.elements.query_with_path(query);
-        let value: Vec<&Value> = match result {
-            Ok(v) => {
-                let values: Vec<&Value> = v.into_iter().map(|qref| qref.val()).collect();
-                values
-            }
-            Err(_) => vec![],
-        };
+    fn get_type(&self) -> String {
+        self.type_.clone()
+    }
 
-        //Log time
-        let elapsed_time = start_time.elapsed();
-        println!(
-            "[Execution time] {} for query {}- {:?}",
-            "json path query", 
-            query,
-            elapsed_time,
-        );
+    fn get_id(&self) -> String {
+        self.id.clone()
+    }
 
-        value
+    fn get_name(&self) -> String {
+        self.name.clone()
+    }
+
+    fn get_dynamic_facet(&self) -> &HashMap<String, serde_json::Value> {
+        &self.dynamic_facets
+    }
+
+    fn get_facet(&self) -> &HashMap<String, serde_json::Value> {
+        &self.facets
+    }
+
+    fn get_core_facet(&self) -> &HashMap<String, serde_json::Value> {
+        &self.core_facets
     }
 }
 
-pub fn truncate_value(values: Vec<&Value>, truncate_depth: usize) -> Vec<Value> {
+//Deserializer
+fn null_to_empty_vec<'de, D, T>(deserializer: D) -> Result<Vec<T>, D::Error>
+where
+    D: Deserializer<'de>,
+    T: Deserialize<'de>,
+{
+    let opt = Option::<Vec<T>>::deserialize(deserializer)?;
+    Ok(opt.unwrap_or_default())
+}
+
+//TODO refactor using trait
+impl ModelData {
+
+    // pub fn execute_json_path_for_element(&self, query: &str) -> Vec<&Value> {
+    //     println!("[execute_json_path_for_element] executing json path query: {}", query);
+
+    //     let start_time = Instant::now();
+    //     let result = self.elements.query_with_path(query);
+    //     let value: Vec<&Value> = match result {
+    //         Ok(v) => {
+    //             let values: Vec<&Value> = v.into_iter().map(|qref| qref.val()).collect();
+    //             values
+    //         }
+    //         Err(_) => vec![],
+    //     };
+
+    //     //Log time
+    //     let elapsed_time = start_time.elapsed();
+    //     println!(
+    //         "[Execution time] {} for query {}- {:?}",
+    //         "json path query", 
+    //         query,
+    //         elapsed_time,
+    //     );
+
+    //     value
+    // }
+}
+
+pub fn truncate_value(values: &[Value], truncate_depth: usize) -> Vec<Value> {
     let result = values
         .iter()
-        .map(|v| truncate(&v, truncate_depth, 0))
+        .map(|v| truncate(v, truncate_depth, 0))
         .collect();
 
     result
@@ -129,6 +209,8 @@ fn truncate(value: &Value, max_depth: usize, current_depth: usize) -> Value {
         other => other.clone(),
     }
 }
+
+
 
 #[cfg(test)]
 mod tests {
