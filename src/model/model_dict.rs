@@ -61,10 +61,11 @@ impl ModelDictionary {
             generate_element_count_by(&model.elements, |obj| obj.get_type()).unwrap_or_default();
         let element_nature_count =
             generate_element_count_by(&model.elements, |obj| obj.get_nature()).unwrap_or_default();
-        let rel_type_count =
-            generate_element_count_by(&model.relationships, |obj| obj.get_type()).unwrap_or_default();
+        let rel_type_count = generate_element_count_by(&model.relationships, |obj| obj.get_type())
+            .unwrap_or_default();
         let rel_nature_count =
-             generate_element_count_by(&model.relationships, |obj| obj.get_nature()).unwrap_or_default();
+            generate_element_count_by(&model.relationships, |obj| obj.get_nature())
+                .unwrap_or_default();
 
         //Log time
         let elapsed_time = start_time.elapsed();
@@ -90,6 +91,20 @@ impl ModelDictionary {
                     by_nature: rel_nature_count,
                 }),
             },
+        }
+    }
+
+    pub fn get_element_types(&self) -> Vec<String> {
+        match &self.model_stats.elements_stats {
+            Some(r) => r.by_type.value.iter().map(|c| c.element.clone()).collect(),
+            None => vec![],
+        }
+    }
+
+     pub fn get_element_nature(&self) -> Vec<String> {
+        match &self.model_stats.elements_stats {
+            Some(r) => r.by_nature.value.iter().map(|c| c.element.clone()).collect(),
+            None => vec![],
         }
     }
 }

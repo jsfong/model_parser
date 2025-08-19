@@ -1,11 +1,13 @@
 use crate::{
     component::{
-        element_viewer::ElementViewer, json_viewer::{self}, model_stats_viewer
+        element_viewer::ElementViewerInput,
+        json_viewer::{self},
+        model_stats_viewer,
     },
-    model::cubs_model::{self},
+    model::cubs_model,
 };
-use leptos::logging::log;
 use leptos::prelude::*;
+use leptos::{logging::log, tachys::renderer::types};
 use leptos_meta::{provide_meta_context, Stylesheet, Title};
 use leptos_router::{
     components::{Route, Router, Routes},
@@ -18,6 +20,8 @@ use serde_json::Value;
 pub struct ServerResult {
     pub model_id: String,
     pub stats: String,
+    pub types: Vec<String>,
+    pub natures: Vec<String>,
     pub duration: String,
 }
 
@@ -68,6 +72,10 @@ fn HomePage() -> impl IntoView {
     let (result, set_result) = signal("".to_string());
     let (duration, set_duration) = signal("".to_string());
     let (query, set_query) = signal("".to_string());
+    let (element_type, set_element_type): (ReadSignal<Vec<String>>, WriteSignal<Vec<String>>) =
+        signal(vec!["".to_string()]);
+    let (element_nature, set_element_nature): (ReadSignal<Vec<String>>, WriteSignal<Vec<String>>) =
+        signal(vec!["".to_string()]);
 
     let parsed_json_stats = Memo::new(move |_| {
         let stats_str = stats.get();
@@ -84,6 +92,13 @@ fn HomePage() -> impl IntoView {
             set_stats.set(result.stats.clone());
             set_duration.set(result.duration.clone());
             set_query.set(String::new());
+
+            let mut types = result.types;
+            let mut natures = result.natures;
+            types.insert(0, "All".to_string());
+            natures.insert(0, "All".to_string());
+            set_element_type.set(types);
+            set_element_nature.set(natures);
         }
     });
 
@@ -119,26 +134,12 @@ fn HomePage() -> impl IntoView {
         //View
         <div class="flex-container">
             <div class="flex-container-view">
-
-
-            //TODO move into dedicate component
-            // Element query
+            // Element viewer
             { move ||
-
                 if !model_id.get().is_empty() {
                     view! {
                             <ActionForm action=query_model_action>
-                                // <div>
-                                //     <label for="query">Json Path Query: </label>
-                                //     <input type="hidden" name="model_id" prop:value=model_id size=40 />
-                                //     <input type="text" name="query" size=40 value="$.*"/>
-                                //     <label for="depth">Depth: </label>
-                                //     <input type="number" id="depth" name="depth" min="0" max="100" step="1" value="3" />
-                                //     <label for="limit">Limit: </label>
-                                //     <input type="number" id="limit" name="limit" min="0" max="5000" step="1" value="100" />
-                                //     <button type="submit">Run Query</button>
-                                // </div>
-                                <ElementViewer model_id=model_id />
+                                <ElementViewerInput model_id=model_id types=element_type natures=element_nature/>
                             </ActionForm>
                             <json_viewer::JsonViewer json_value=parsed_query collapsed=false/>
                             <div> "Duration: " {duration}</div>
@@ -147,7 +148,6 @@ fn HomePage() -> impl IntoView {
                         view!{}.into_any()
                     }
                 }
-
             </div>
 
 
@@ -219,6 +219,8 @@ pub async fn parse_model(model_id: String) -> Result<ServerResult, ServerFnError
     Ok(ServerResult {
         model_id: model_id,
         stats: model_stats,
+        types: dict.get_element_types(),
+        natures: dict.get_element_nature(),
         duration: format!("Get model took {} ms", elapsed_time.as_millis().to_string()),
     })
 }
@@ -226,6 +228,7 @@ pub async fn parse_model(model_id: String) -> Result<ServerResult, ServerFnError
 #[server(QueryModel, "/api")]
 pub async fn query_model(
     model_id: String,
+    types: String,
     query: String,
     depth: usize,
     limit: usize,
@@ -233,7 +236,11 @@ pub async fn query_model(
     use crate::model::parser;
     use leptos::logging::log;
     use std::time::Instant;
-    log!("[query_model] Parsing model with id {}", model_id);
+    log!(
+        "[query_model] Parsing model with id {} with type {}",
+        model_id,
+        types
+    );
 
     if model_id.is_empty() || query.is_empty() {
         return Ok(QueryResult::default());
@@ -281,7 +288,11 @@ pub async fn query_model(
     let limited_query_result = &elements[0..limit].to_vec();
 
     //Depth
-    println!("[query_model] truncating {} elements to depth {}", limited_query_result.len(), depth);
+    println!(
+        "[query_model] truncating {} elements to depth {}",
+        limited_query_result.len(),
+        depth
+    );
 
     //Conver to Vec<Value>
     let limited_query_result_value: Vec<Value> = limited_query_result
