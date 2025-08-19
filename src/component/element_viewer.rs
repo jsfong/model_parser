@@ -12,6 +12,9 @@ pub fn ElementViewerInput(
                 <input type="hidden" name="model_id" prop:value=model_id size=40 />
 
                 // Conditional filter
+                <label for="id">Id : </label>
+                <input type="text" name="id" size=40 value=""/>
+
                 <label for="types">Select Type : </label>
                 <select id="types" name="types">
                     {

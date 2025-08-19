@@ -1,10 +1,12 @@
+use std::f64::consts::E;
+
 use crate::{
     component::{
         element_viewer::ElementViewerInput,
         json_viewer::{self},
         model_stats_viewer,
     },
-    model::cubs_model,
+    model::cubs_model::{self},
 };
 use leptos::prelude::*;
 use leptos::{logging::log, tachys::renderer::types};
@@ -228,7 +230,9 @@ pub async fn parse_model(model_id: String) -> Result<ServerResult, ServerFnError
 #[server(QueryModel, "/api")]
 pub async fn query_model(
     model_id: String,
+    id: String,
     types: String,
+    natures: String,
     query: String,
     depth: usize,
     limit: usize,
@@ -237,9 +241,10 @@ pub async fn query_model(
     use leptos::logging::log;
     use std::time::Instant;
     log!(
-        "[query_model] Parsing model with id {} with type {}",
+        "[query_model] Parsing model with id {} with type {} and nature {}",
         model_id,
-        types
+        types,
+        natures
     );
 
     if model_id.is_empty() || query.is_empty() {
@@ -269,23 +274,44 @@ pub async fn query_model(
     };
 
     //TODO manual query + jsonapth
+    //filter id
+    let mut filtered_elements = match id.is_empty() {
+        true => model_data.get_elements(),
+        false => match model_data.get_element_with_id(&id) {
+            Some(e) => vec![e],
+            None => vec![],
+        },
+    };
+
+    //filter nature
+    filtered_elements.retain(|e| match natures.as_str() {
+        "All" => true,
+        _ => *e.nature == natures,
+    });
+
+     //filter type
+    filtered_elements.retain(|e| match types.as_str() {
+        "All" => true,
+        _ => *e.type_ == types,
+    });
+
+
     //Query
     // let query_result = model_data.execute_json_path_for_element(&query);
     // let value = serde_json::to_value(model_data.elements).unwrap_or_default();
 
     //Limit
-    let elements = model_data.elements;
-    let limit = match limit >= elements.len() {
-        true => elements.len(),
+    let limit = match limit >= filtered_elements.len() {
+        true => filtered_elements.len(),
         false => limit,
     };
 
     println!(
         "[query_model] limiting total result of {} to {}",
-        elements.len(),
+        filtered_elements.len(),
         limit
     );
-    let limited_query_result = &elements[0..limit].to_vec();
+    let limited_query_result = &filtered_elements[0..limit].to_vec();
 
     //Depth
     println!(

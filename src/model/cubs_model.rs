@@ -82,6 +82,7 @@ impl CusObject for Element {
     }
 }
 
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Relationship {
@@ -144,30 +145,23 @@ where
 //TODO refactor using trait
 impl ModelData {
 
-    // pub fn execute_json_path_for_element(&self, query: &str) -> Vec<&Value> {
-    //     println!("[execute_json_path_for_element] executing json path query: {}", query);
+    pub fn get_elements (&self) -> Vec<&Element> {
+        self.elements.iter().collect()
+    }
 
-    //     let start_time = Instant::now();
-    //     let result = self.elements.query_with_path(query);
-    //     let value: Vec<&Value> = match result {
-    //         Ok(v) => {
-    //             let values: Vec<&Value> = v.into_iter().map(|qref| qref.val()).collect();
-    //             values
-    //         }
-    //         Err(_) => vec![],
-    //     };
 
-    //     //Log time
-    //     let elapsed_time = start_time.elapsed();
-    //     println!(
-    //         "[Execution time] {} for query {}- {:?}",
-    //         "json path query", 
-    //         query,
-    //         elapsed_time,
-    //     );
+    pub fn get_element_with_id(&self, id: &str) -> Option<&Element> {
+        let id_filter = |e: &Element| e.id == id;
+        let r:Vec<&Element> = self.get_element_with_filter(id_filter);
+        r.first().copied()
+    }
 
-    //     value
-    // }
+    pub fn get_element_with_filter<F>(&self, filter: F) -> Vec<&Element>
+    where
+        F: Fn(&Element) -> bool,
+    {
+        self.elements.iter().filter(|e| filter(e)).collect()
+    }
 }
 
 pub fn truncate_value(values: &[Value], truncate_depth: usize) -> Vec<Value> {
@@ -207,8 +201,6 @@ fn truncate(value: &Value, max_depth: usize, current_depth: usize) -> Value {
         other => other.clone(),
     }
 }
-
-
 
 #[cfg(test)]
 mod tests {
