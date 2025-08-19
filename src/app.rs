@@ -1,18 +1,17 @@
 use crate::{
     component::{
-        json_viewer::{self},
-        model_stats_viewer,
+        element_viewer::ElementViewer, json_viewer::{self}, model_stats_viewer
     },
-    model::cubs_model::{self, CusObject, Element, ModelData},
+    model::cubs_model::{self},
 };
 use leptos::logging::log;
-use leptos::{html::Q, prelude::*};
+use leptos::prelude::*;
 use leptos_meta::{provide_meta_context, Stylesheet, Title};
 use leptos_router::{
     components::{Route, Router, Routes},
     StaticSegment, WildcardSegment,
 };
-use serde::{de, Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -129,16 +128,17 @@ fn HomePage() -> impl IntoView {
                 if !model_id.get().is_empty() {
                     view! {
                             <ActionForm action=query_model_action>
-                                <div>
-                                    <label for="query">Json Path Query: </label>
-                                    <input type="hidden" name="model_id" prop:value=model_id size=40 />
-                                    <input type="text" name="query" size=40 value="$.*"/>
-                                    <label for="depth">Depth: </label>
-                                    <input type="number" id="depth" name="depth" min="0" max="100" step="1" value="3" />
-                                    <label for="limit">Limit: </label>
-                                    <input type="number" id="limit" name="limit" min="0" max="5000" step="1" value="100" />
-                                    <button type="submit">Run Query</button>
-                                </div>
+                                // <div>
+                                //     <label for="query">Json Path Query: </label>
+                                //     <input type="hidden" name="model_id" prop:value=model_id size=40 />
+                                //     <input type="text" name="query" size=40 value="$.*"/>
+                                //     <label for="depth">Depth: </label>
+                                //     <input type="number" id="depth" name="depth" min="0" max="100" step="1" value="3" />
+                                //     <label for="limit">Limit: </label>
+                                //     <input type="number" id="limit" name="limit" min="0" max="5000" step="1" value="100" />
+                                //     <button type="submit">Run Query</button>
+                                // </div>
+                                <ElementViewer model_id=model_id />
                             </ActionForm>
                             <json_viewer::JsonViewer json_value=parsed_query collapsed=false/>
                             <div> "Duration: " {duration}</div>
