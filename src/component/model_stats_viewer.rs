@@ -1,5 +1,5 @@
 use crate::model::model_dict::{ElementCounts, ModelStats};
-use leptos::{logging::log, prelude::*};
+use leptos::{logging::log, math::mo, prelude::*};
 use serde_json::Value;
 
 #[component]
@@ -53,6 +53,7 @@ fn ModelStats<'a>(model_stats: &'a ModelStats) -> impl IntoView {
 
     view! {
         <h3 class="label-model-stats">"Cubs Objects: " {cubs_obj_count}</h3>
+        <h3 class="label-model-stats">"Version: " {model_stats.version}</h3>
         <h4 class="label-model-stats">By type</h4>
         <div class="table-model-stats">         
             <table>

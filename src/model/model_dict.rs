@@ -19,7 +19,8 @@ pub struct ModelDictionary {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ModelStats {
     pub elements_stats: Option<CubsObjectReport>,
-    pub relationships_stats: Option<CubsObjectReport>,
+    pub relationships_stats: Option<CubsObjectReport>, 
+    pub version: u32,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -90,6 +91,7 @@ impl ModelDictionary {
                     by_type: rel_type_count,
                     by_nature: rel_nature_count,
                 }),
+                version: model.version,
             },
         }
     }

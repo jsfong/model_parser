@@ -1,15 +1,13 @@
-use std::f64::consts::E;
-
 use crate::{
     component::{
         element_viewer::ElementViewerInput,
         json_viewer::{self},
         model_stats_viewer,
     },
-    model::cubs_model::{self},
+    model::cubs_model::{self, ModelVersionNumber},
 };
+use leptos::logging::log;
 use leptos::prelude::*;
-use leptos::{logging::log, tachys::renderer::types};
 use leptos_meta::{provide_meta_context, Stylesheet, Title};
 use leptos_router::{
     components::{Route, Router, Routes},
@@ -25,6 +23,7 @@ pub struct ServerResult {
     pub types: Vec<String>,
     pub natures: Vec<String>,
     pub duration: String,
+    pub model_versions: Vec<ModelVersionNumber>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, Default)]
@@ -70,6 +69,10 @@ fn HomePage() -> impl IntoView {
 
     // Signal
     let (model_id, set_model_id) = signal("".to_string());
+    let (model_versions, set_model_versions): (ReadSignal<Vec<String>>, WriteSignal<Vec<String>>) =
+        signal(vec!["".to_string()]);
+    let (selected_version, set_selected_version) = signal("".to_string());
+
     let (stats, set_stats) = signal("".to_string());
     let (result, set_result) = signal("".to_string());
     let (duration, set_duration) = signal("".to_string());
@@ -84,14 +87,20 @@ fn HomePage() -> impl IntoView {
         let parsed = serde_json::from_str::<Value>(&stats_str).ok();
         parsed
     });
-    let parsed_json_elements =
-        Memo::new(move |_| serde_json::from_str::<Value>(&result.get()).ok());
 
     Effect::new(move |_| {
         if let Some(Ok(result)) = value.get() {
-            log!("[HomePage] Server result received: {:?}", result);
             set_model_id.set(result.model_id.clone());
             set_stats.set(result.stats.clone());
+
+            let versions = result
+                .model_versions
+                .iter()
+                .map(|mv| mv.vers_no.to_string())
+                .collect();
+
+            log!("Version: {:?}", versions);
+            set_model_versions.set(versions);
             set_duration.set(result.duration.clone());
             set_query.set(String::new());
 
@@ -122,9 +131,20 @@ fn HomePage() -> impl IntoView {
             <div class="flex-cmd-parent">
                 <label for="model_id">Model Id: </label>
                 <input type="text" name="model_id" placeholder="Model Id" size=40 value="aa5bc4b2-156f-4bad-b13a-4ccf31df53ca" class="flex-cmd-model-id"/>
-                <label for="vers">Version No: </label>
-                <select id="vers" name="vers_no">
-                    <option value="">Empty</option>
+                <label for="vers_no">Version No: </label>
+                <select id="vers_no" name="vers_no" on:change= move |ev|{
+                    let value = event_target_value(&ev);
+                    set_selected_version.set(value);
+                }>
+                    // <option value="">Empty</option>
+                    {move ||
+                        model_versions.get().into_iter().map(|v|{
+                            let value = v.clone();
+                            view! {
+                                <option value={value}>{v}</option>
+                            }
+                        }).collect_view()
+                    }
                 </select>
                 <button type="submit" class="flex-cmd-item">Read model</button>
             </div>
@@ -141,7 +161,7 @@ fn HomePage() -> impl IntoView {
                 if !model_id.get().is_empty() {
                     view! {
                             <ActionForm action=query_model_action>
-                                <ElementViewerInput model_id=model_id types=element_type natures=element_nature/>
+                                <ElementViewerInput model_id=model_id version=selected_version types=element_type natures=element_nature/>
                             </ActionForm>
                             <json_viewer::JsonViewer json_value=parsed_query collapsed=false/>
                             <div> "Duration: " {duration}</div>
@@ -184,7 +204,7 @@ fn NotFound() -> impl IntoView {
 }
 
 #[server(ParseModel, "/api")]
-pub async fn parse_model(model_id: String) -> Result<ServerResult, ServerFnError> {
+pub async fn parse_model(model_id: String, vers_no: String) -> Result<ServerResult, ServerFnError> {
     log!("[parse_model] Parsing model with id {}", model_id);
     use crate::model::model_dict;
     use crate::model::parser;
@@ -192,8 +212,16 @@ pub async fn parse_model(model_id: String) -> Result<ServerResult, ServerFnError
     use std::time::Instant;
     let start_time = Instant::now();
 
+    //Read all model version
+    let model_versions = parser::read_model_data_versions(&model_id)
+        .await
+        .unwrap_or_default();
+
     // Read saved model
-    let model_data = parser::read_model_data(&model_id).await;
+    let version_num = vers_no
+        .parse::<i32>()
+        .unwrap_or_else(|_| model_versions.first().map_or(0, |v| v.vers_no));
+    let model_data = parser::read_model_data(&model_id, version_num).await;
     let model_data = match model_data {
         Ok(model_data) => model_data,
         Err(_) => {
@@ -224,12 +252,14 @@ pub async fn parse_model(model_id: String) -> Result<ServerResult, ServerFnError
         types: dict.get_element_types(),
         natures: dict.get_element_nature(),
         duration: format!("Get model took {} ms", elapsed_time.as_millis().to_string()),
+        model_versions: model_versions,
     })
 }
 
 #[server(QueryModel, "/api")]
 pub async fn query_model(
     model_id: String,
+    vers_no: String,
     id: String,
     types: String,
     natures: String,
@@ -262,7 +292,8 @@ pub async fn query_model(
     let start_time = Instant::now();
 
     // Read saved model
-    let model_data = parser::read_model_data(&model_id).await;
+    let version_num = vers_no.parse::<i32>().unwrap_or_else(|_| 0);
+    let model_data = parser::read_model_data(&model_id, version_num).await;
     let model_data = match model_data {
         Ok(model_data) => model_data,
         Err(_) => {
@@ -273,7 +304,7 @@ pub async fn query_model(
         }
     };
 
-    //TODO manual query + jsonapth
+    //Filtering
     //filter id
     let mut filtered_elements = match id.is_empty() {
         true => model_data.get_elements(),
@@ -289,14 +320,13 @@ pub async fn query_model(
         _ => *e.nature == natures,
     });
 
-     //filter type
+    //filter type
     filtered_elements.retain(|e| match types.as_str() {
         "All" => true,
         _ => *e.type_ == types,
     });
 
-
-    //Query
+    //TODO jsonPath Query
     // let query_result = model_data.execute_json_path_for_element(&query);
     // let value = serde_json::to_value(model_data.elements).unwrap_or_default();
 

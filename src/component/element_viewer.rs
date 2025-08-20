@@ -3,6 +3,7 @@ use leptos::prelude::*;
 #[component]
 pub fn ElementViewerInput(
     model_id: ReadSignal<String>,
+    version: ReadSignal<String>,
     types: ReadSignal<Vec<String>>,
     natures: ReadSignal<Vec<String>>,
 ) -> impl IntoView {
@@ -10,6 +11,7 @@ pub fn ElementViewerInput(
         <div class="flex-container-view-input">
             <div class="flex-container-view-input-row">
                 <input type="hidden" name="model_id" prop:value=model_id size=40 />
+                <input type="hidden" name="vers_no" prop:value=version />
 
                 // Conditional filter
                 <label for="id">Id : </label>
@@ -17,7 +19,7 @@ pub fn ElementViewerInput(
 
                 <label for="types">Select Type : </label>
                 <select id="types" name="types">
-                    {
+                    { move || 
                         types.get().into_iter().map(|n| {
                             let value = n.clone();
                             view! {
@@ -29,7 +31,7 @@ pub fn ElementViewerInput(
 
                 <label for="natures">Nature : </label>
                 <select id="natures" name="natures">
-                    {
+                    { move ||
                         natures.get().into_iter().map(|n| {
                             let value = n.clone();
                             view! {

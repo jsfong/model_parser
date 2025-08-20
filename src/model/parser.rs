@@ -1,7 +1,7 @@
 use crate::model::cache::{self, QuickCache};
 use crate::model::database_util;
 
-use super::cubs_model::{ModelData, ModelResponse};
+use super::cubs_model::{ModelData, ModelResponse, ModelVersionNumber};
 use anyhow::anyhow;
 use flate2::bufread::GzDecoder;
 use sqlx::{Pool, Postgres};
@@ -47,7 +47,7 @@ where
     Ok(result)
 }
 
-async fn read_model_data_from_db(
+async fn read_latest_model_data_from_db(
     model_id: &String,
     cache: &QuickCache,
 ) -> Result<ModelData, Box<dyn Error>> {
@@ -82,10 +82,12 @@ LIMIT 1"#,
 
     //Convert to ModelData
     println!("[read_model_data_from_db] Convert to internal format ...");
-    let model_data = serde_json::from_str(&decompressed_model)?;
+    let model_data: ModelData = serde_json::from_str(&decompressed_model)?;
 
     // Store in cache
-    cache.insert(&model_id, &model_data);
+    let key = model_id.clone() + "_" + &model_data.version.to_string();
+    println!("[read_model_data_from_db] Cache Model data key: {}", key);
+    cache.insert(&key, &model_data);
 
     //Log time
     let elapsed_time = start_time.elapsed();
@@ -97,10 +99,103 @@ LIMIT 1"#,
     Ok(model_data)
 }
 
-pub async fn read_model_data(model_id: &String) -> Result<ModelData, Box<dyn Error>> {
+pub async fn read_model_data_versions(
+    model_id: &String,
+) -> Result<Vec<ModelVersionNumber>, Box<dyn Error>> {
     let start_time = Instant::now();
 
-    println!("[read_model_data] Retrievig {} model ...", &model_id);
+    println!(
+        "[read_model_data_versions] Retrieving {} model version from DB...",
+        &model_id
+    );
+
+    //Connect to DB
+    let pool = database_util::connect_to_db().await;
+
+    // Retrieve from DB
+    let model_versions = sqlx::query_as!(
+        ModelVersionNumber,
+        r#"SELECT vers_no FROM cubs_object_model.saved_model WHERE model_id = $1 ORDER BY vers_no DESC"#,
+        model_id
+    )
+    .fetch_all(&pool)
+    .await?;
+
+    //Log time
+    let elapsed_time = start_time.elapsed();
+    println!(
+        "[Execution time] {} - {:?}",
+        "read_model_data_versions", elapsed_time
+    );
+
+    Ok(model_versions)
+}
+
+async fn read_model_data_from_db_with_version(
+    model_id: &String,
+    version_no: i32,
+    cache: &QuickCache,
+) -> Result<ModelData, Box<dyn Error>> {
+    let start_time = Instant::now();
+
+    println!(
+        "[read_model_data_from_db_with_version] Retrieving {} model from DB...",
+        &model_id
+    );
+
+    //Connect to DB
+    let pool = database_util::connect_to_db().await;
+
+    // Retrieve from DB
+    println!("[read_model_data_from_db_with_version] Retreiving from DB ...");
+    let saved_model = sqlx::query_as!(
+        SavedModel,
+        r#"SELECT model_id, vers_no, saved_gzip FROM cubs_object_model.saved_model WHERE model_id = $1 and vers_no = $2"#,
+        model_id, version_no
+    )
+    .fetch_one(&pool)
+    .await?;
+    println!(
+        "[read_model_data_from_db_with_version]  Load saved model with model id: {} version: {} from DB",
+        saved_model.model_id, saved_model.vers_no
+    );
+
+    // Unzip
+    println!("[read_model_data_from_db_with_version] Unzip ...");
+    let decompressed_model = decompress_gzip_to_string(&saved_model.saved_gzip)?;
+
+    //Convert to ModelData
+    println!("[read_model_data_from_db_with_version] Convert to internal format ...");
+    let model_data: ModelData = serde_json::from_str(&decompressed_model)?;
+
+    // Store in cache
+    let key = model_id.clone() + "_" + &model_data.version.to_string();
+    println!(
+        "[read_model_data_from_db_with_version] Cache Model data key: {}",
+        key
+    );
+    cache.insert(&key, &model_data);
+
+    //Log time
+    let elapsed_time = start_time.elapsed();
+    println!(
+        "[Execution time] {} - {:?}",
+        "read_model_data_from_db_with_version + cache", elapsed_time
+    );
+
+    Ok(model_data)
+}
+
+pub async fn read_model_data(
+    model_id: &String,
+    version_num: i32,
+) -> Result<ModelData, Box<dyn Error>> {
+    let start_time = Instant::now();
+
+    println!(
+        "[read_model_data] Retrievig {} model with version {:?} ...",
+        &model_id, version_num
+    );
 
     // Check format
     match Uuid::parse_str(&model_id) {
@@ -116,7 +211,8 @@ pub async fn read_model_data(model_id: &String) -> Result<ModelData, Box<dyn Err
 
     // Get from cache
     let cache = cache::get_quick_cache();
-    if let Some(cached_model_data) = cache.get(model_id) {
+    let key = model_id.clone() + "_" + &version_num.to_string();
+    if let Some(cached_model_data) = cache.get(&key) {
         println!("[read_model_data] Found model data {} in cache", model_id);
 
         let elapsed_time = start_time.elapsed();
@@ -129,7 +225,7 @@ pub async fn read_model_data(model_id: &String) -> Result<ModelData, Box<dyn Err
     }
 
     // Get from DB
-    let model_data = read_model_data_from_db(model_id, &cache).await;
+    let model_data = read_model_data_from_db_with_version(model_id, version_num, &cache).await;
 
     //Log time
     let elapsed_time = start_time.elapsed();

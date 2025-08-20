@@ -23,6 +23,11 @@ pub struct ModelData {
     #[serde(deserialize_with = "null_to_empty_vec")]
     pub relationships: Vec<Relationship>,
     // pub relationships: Value,
+ }
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ModelVersionNumber {
+    pub vers_no: i32, //postgres int4 is map back to i32
 }
 
 pub trait CusObject {
