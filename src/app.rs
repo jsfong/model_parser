@@ -93,6 +93,7 @@ fn HomePage() -> impl IntoView {
             set_model_id.set(result.model_id.clone());
             set_stats.set(result.stats.clone());
 
+            // Version
             let versions: Vec<String> = result
                 .model_versions
                 .iter()
@@ -102,7 +103,6 @@ fn HomePage() -> impl IntoView {
                 Some(v) => v.clone(),
                 None => 0.to_string(),
             };
-
             log!("Version: {:?}", versions);
             set_model_versions.set(versions);        
             set_selected_version.set(latest_version);
@@ -110,8 +110,11 @@ fn HomePage() -> impl IntoView {
             set_duration.set(result.duration.clone());
             set_query.set(String::new());
 
+            // Type and natures
             let mut types = result.types;
             let mut natures = result.natures;
+            types.sort();
+            natures.sort();
             types.insert(0, "All".to_string());
             natures.insert(0, "All".to_string());
             set_element_type.set(types);
