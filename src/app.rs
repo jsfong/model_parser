@@ -93,14 +93,20 @@ fn HomePage() -> impl IntoView {
             set_model_id.set(result.model_id.clone());
             set_stats.set(result.stats.clone());
 
-            let versions = result
+            let versions: Vec<String> = result
                 .model_versions
                 .iter()
                 .map(|mv| mv.vers_no.to_string())
                 .collect();
+            let latest_version = match versions.first(){
+                Some(v) => v.clone(),
+                None => 0.to_string(),
+            };
 
             log!("Version: {:?}", versions);
-            set_model_versions.set(versions);
+            set_model_versions.set(versions);        
+            set_selected_version.set(latest_version);
+
             set_duration.set(result.duration.clone());
             set_query.set(String::new());
 
@@ -141,7 +147,7 @@ fn HomePage() -> impl IntoView {
                         model_versions.get().into_iter().map(|v|{
                             let value = v.clone();
                             view! {
-                                <option value={value}>{v}</option>
+                                <option value={value}>{v}</option>                                
                             }
                         }).collect_view()
                     }
@@ -271,10 +277,11 @@ pub async fn query_model(
     use leptos::logging::log;
     use std::time::Instant;
     log!(
-        "[query_model] Parsing model with id {} with type {} and nature {}",
+        "[query_model] Parsing model with id {} with type {} and nature {} and version {}",
         model_id,
         types,
-        natures
+        natures,
+        vers_no,
     );
 
     if model_id.is_empty() || query.is_empty() {
