@@ -151,6 +151,6 @@ fn JsonNode(value: Value, level: i32, is_last: bool, collapsed: bool) -> impl In
 #[component]
 pub fn JsonNotFound() -> impl IntoView {
     view! {
-       <span class="json-error">"Invalid JSON format"</span>
+       <span class="json-error">"No data or querying in progress."</span>
     }
 }

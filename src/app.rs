@@ -4,7 +4,7 @@ use crate::{
         json_viewer::{self},
         model_stats_viewer,
     },
-    model::cubs_model::{self, ModelVersionNumber},
+    model::cubs_model::{self, FacetType, ModelData, ModelVersionNumber},
 };
 use leptos::logging::log;
 use leptos::prelude::*;
@@ -99,12 +99,12 @@ fn HomePage() -> impl IntoView {
                 .iter()
                 .map(|mv| mv.vers_no.to_string())
                 .collect();
-            let latest_version = match versions.first(){
+            let latest_version = match versions.first() {
                 Some(v) => v.clone(),
                 None => 0.to_string(),
             };
             log!("Version: {:?}", versions);
-            set_model_versions.set(versions);        
+            set_model_versions.set(versions);
             set_selected_version.set(latest_version);
 
             set_duration.set(result.duration.clone());
@@ -124,7 +124,6 @@ fn HomePage() -> impl IntoView {
 
     Effect::new(move |_| {
         if let Some(Ok(result)) = query_value.get() {
-            log!("[HomePage] Query result received: {:?}", result);
             set_query.set(result.data);
             set_duration.set(result.duration);
         }
@@ -150,7 +149,7 @@ fn HomePage() -> impl IntoView {
                         model_versions.get().into_iter().map(|v|{
                             let value = v.clone();
                             view! {
-                                <option value={value}>{v}</option>                                
+                                <option value={value}>{v}</option>
                             }
                         }).collect_view()
                     }
@@ -170,7 +169,7 @@ fn HomePage() -> impl IntoView {
                 if !model_id.get().is_empty() {
                     view! {
                             <ActionForm action=query_model_action>
-                                <ElementViewerInput model_id=model_id version=selected_version types=element_type natures=element_nature/>
+                                <ElementViewerInput model_id=model_id version=selected_version types=element_type natures=element_nature set_query=set_query/>
                             </ActionForm>
                             <json_viewer::JsonViewer json_value=parsed_query collapsed=false/>
                             <div> "Duration: " {duration}</div>
@@ -275,6 +274,8 @@ pub async fn query_model(
     query: String,
     depth: usize,
     limit: usize,
+    facet_type: String,
+    is_detail: Option<String>,
 ) -> Result<QueryResult, ServerFnError> {
     use crate::model::parser;
     use leptos::logging::log;
@@ -287,7 +288,7 @@ pub async fn query_model(
         vers_no,
     );
 
-    if model_id.is_empty() || query.is_empty() {
+    if model_id.is_empty() {
         return Ok(QueryResult::default());
     }
 
@@ -336,9 +337,29 @@ pub async fn query_model(
         _ => *e.type_ == types,
     });
 
-    //TODO jsonPath Query
-    // let query_result = model_data.execute_json_path_for_element(&query);
-    // let value = serde_json::to_value(model_data.elements).unwrap_or_default();
+    //Apply json pointer
+    let facet_type: Option<FacetType> = match facet_type.as_str() {
+        "dynamicFacets" => Some(FacetType::DynamicFacets),
+        "coreFacets" => Some(FacetType::CoreFacets),
+        "facets" => Some(FacetType::Facets),
+        _ => None,
+    };
+
+    let is_detail = is_detail.map_or(false, |v| v == "is_detail");
+    println!(
+        "[query_model] Applying json pointer facet type: {:?} pointer: {} with detail: {}",
+        facet_type, &query, is_detail
+    );
+
+    let filtered_elements = if facet_type.is_some() {
+        ModelData::get_json_values(filtered_elements, facet_type, &query, is_detail)
+    } else {
+        filtered_elements
+            .iter()
+            .map(|e| serde_json::to_value(e).unwrap_or_default())
+            .filter(|v| *v != Value::Null)
+            .collect()
+    };
 
     //Limit
     let limit = match limit >= filtered_elements.len() {
@@ -359,17 +380,9 @@ pub async fn query_model(
         limited_query_result.len(),
         depth
     );
-
-    //Conver to Vec<Value>
-    let limited_query_result_value: Vec<Value> = limited_query_result
-        .iter()
-        .map(|e| serde_json::to_value(e).unwrap_or_default())
-        .filter(|v| *v != Value::Null)
-        .collect();
-
     let elements = match depth > 0 {
         true => {
-            let filtered_element = cubs_model::truncate_value(&limited_query_result_value, depth);
+            let filtered_element = cubs_model::truncate_value(&limited_query_result, depth);
             serde_json::to_string_pretty(&filtered_element).unwrap()
         }
         false => serde_json::to_string_pretty(&limited_query_result).unwrap(),

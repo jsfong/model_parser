@@ -1,7 +1,7 @@
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::{Map, Value};
-use std::char;
 use std::collections::HashMap;
+use std::{char, fmt};
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -23,7 +23,7 @@ pub struct ModelData {
     #[serde(deserialize_with = "null_to_empty_vec")]
     pub relationships: Vec<Relationship>,
     // pub relationships: Value,
- }
+}
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ModelVersionNumber {
@@ -57,6 +57,42 @@ pub struct Element {
     pub core_facets: HashMap<String, serde_json::Value>,
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct Relationship {
+    pub id: String,
+    pub source_id: String,
+    pub target_id: String,
+    #[serde(alias = "type")]
+    pub type_: String,
+    pub nature: String,
+    #[serde(default)]
+    pub name: String,
+    pub version: u32,
+    #[serde(default)]
+    pub dynamic_facets: HashMap<String, serde_json::Value>,
+    pub facets: HashMap<String, serde_json::Value>,
+    #[serde(flatten)]
+    pub core_facets: HashMap<String, serde_json::Value>,
+}
+
+#[derive(Debug)]
+pub enum FacetType {
+    CoreFacets,
+    DynamicFacets,
+    Facets,
+}
+
+impl fmt::Display for FacetType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            FacetType::CoreFacets => write!(f, "core_facets"),
+            FacetType::DynamicFacets => write!(f, "dynamic_facets"),
+            FacetType::Facets => write!(f, "mk3_facets"),
+        }
+    }
+}
+
 impl CusObject for Element {
     fn get_nature(&self) -> String {
         self.nature.clone()
@@ -87,24 +123,57 @@ impl CusObject for Element {
     }
 }
 
+impl Element {
+    pub fn get_json_value(&self, facet_type: &FacetType, pointer: &str, is_show_element_id: bool) -> Option<Value> {
+        // Construct filtered element
+        let filtered_element = match facet_type {
+            FacetType::CoreFacets => Element {
+                dynamic_facets: HashMap::new(),
+                facets: HashMap::new(),
+                ..self.clone()
+            },
+            FacetType::DynamicFacets => Element {
+                core_facets: HashMap::new(),
+                facets: HashMap::new(),
+                ..self.clone()
+            },
+            FacetType::Facets => Element {
+                core_facets: HashMap::new(),
+                dynamic_facets: HashMap::new(),
+                ..self.clone()
+            },
+        };
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct Relationship {
-    pub id: String,
-    pub source_id: String,
-    pub target_id: String,
-    #[serde(alias = "type")]
-    pub type_: String,
-    pub nature: String,
-    #[serde(default)]
-    pub name: String,
-    pub version: u32,
-    #[serde(default)]
-    pub dynamic_facets: HashMap<String, serde_json::Value>,
-    pub facets: HashMap<String, serde_json::Value>,
-    #[serde(flatten)]
-    pub core_facets: HashMap<String, serde_json::Value>,
+        let facets_map = match facet_type {
+            FacetType::CoreFacets => &filtered_element.core_facets,
+            FacetType::DynamicFacets => &filtered_element.dynamic_facets,
+            FacetType::Facets => &filtered_element.facets,
+        };
+
+        // Return of no query need to be perform
+        if pointer.is_empty() || facets_map.is_empty() {
+            return match facets_map.is_empty() {
+                true => None,
+                false => serde_json::to_value(&filtered_element).ok(),
+            };
+        }
+
+        //Perform json pointer
+        let mut facets_map_value = serde_json::to_value(facets_map).unwrap();
+        let ptr = facets_map_value.pointer_mut(pointer);
+        match ptr {
+            Some(v) => {
+                let result = if is_show_element_id {
+                    let e = FilteredElementResult::from(&filtered_element, v.take());
+                     serde_json::to_value(e).ok()
+                } else {
+                    Some(v.take())
+                };
+                result
+            }
+            None => None,
+        }
+    }
 }
 
 impl CusObject for Relationship {
@@ -137,6 +206,32 @@ impl CusObject for Relationship {
     }
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct FilteredElementResult {
+    pub id: String,
+    #[serde(alias = "type")]
+    pub type_: String,
+    pub nature: String,
+    #[serde(default)]
+    pub name: String,
+    pub version: u32,
+    pub filtered_result: Value,
+}
+
+impl FilteredElementResult {
+    pub fn from(element: &Element, result: Value) -> FilteredElementResult {
+        FilteredElementResult {
+            id: element.id.clone(),
+            type_: element.type_.clone(),
+            nature: element.nature.clone(),
+            name: element.name.clone(),
+            version: element.version,
+            filtered_result: result,
+        }
+    }
+}
+
 //Deserializer
 fn null_to_empty_vec<'de, D, T>(deserializer: D) -> Result<Vec<T>, D::Error>
 where
@@ -149,15 +244,13 @@ where
 
 //TODO refactor using trait
 impl ModelData {
-
-    pub fn get_elements (&self) -> Vec<&Element> {
+    pub fn get_elements(&self) -> Vec<&Element> {
         self.elements.iter().collect()
     }
 
-
     pub fn get_element_with_id(&self, id: &str) -> Option<&Element> {
         let id_filter = |e: &Element| e.id == id;
-        let r:Vec<&Element> = self.get_element_with_filter(id_filter);
+        let r: Vec<&Element> = self.get_element_with_filter(id_filter);
         r.first().copied()
     }
 
@@ -166,6 +259,27 @@ impl ModelData {
         F: Fn(&Element) -> bool,
     {
         self.elements.iter().filter(|e| filter(e)).collect()
+    }
+
+    pub fn get_json_values(
+        elements: Vec<&Element>,
+        facet_type: Option<FacetType>,
+        pointer: &str,
+        is_show_element_id: bool,
+    ) -> Vec<Value> {
+        println!(
+            "[Element - get_json_values] for {:?} with path {}",
+            facet_type, pointer
+        );
+
+        if let Some(facet_type) = facet_type {
+            elements
+                .iter()
+                .filter_map(|e| e.get_json_value(&facet_type, pointer, is_show_element_id))
+                .collect()
+        } else {
+            vec![]
+        }
     }
 }
 
