@@ -74,4 +74,7 @@ This template itself is released under the Unlicense. You should replace the LIC
 ## Building
 ### Prerequiste
 Install sqlx-cli
+
 `cargo install sqlx-cli --no-default-features --features native-tls,postgres`
+
+Run `build_docker.sh`

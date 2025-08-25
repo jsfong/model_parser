@@ -221,7 +221,7 @@ button {
     gap: 10px 10px;
 }
 
-.flex-container-view-input{
+.flex-container-view-input {
     flex-direction: column;
     display: flex;
     gap: 0px;
@@ -231,7 +231,7 @@ button {
 
 }
 
-.flex-container-view-input-row{
+.flex-container-view-input-row {
     flex-direction: row;
     display: flex;
     gap: 10px;
@@ -267,6 +267,86 @@ button {
 .label-model-stats {
     color: #89A8B2;
 }
+
 // tr:nth-child(even) {
 //     background-color: #B3C8CF;
 // }
+
+// Status Bar
+#statusbar {
+    width: 500px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #B3C8CF;
+    text-align: center;
+    border-radius: 2px;
+    padding: 16px;
+    position: fixed;
+    z-index: 1;
+    left: 50%;
+    bottom: 30px;
+    font-size: 13px;
+}
+
+#statusbar.show {
+    visibility: visible;
+    -webkit-animation: fadein 0.5s ease-in-out;
+    animation: fadein 0.5s ease-in-out;
+    animation-fill-mode: both;
+}
+
+#statusbar.hide {
+    opacity: 0;
+    -webkit-animation: fadeout 0.5s ease-in-out;
+    animation: fadeout 0.5s ease-in-out;
+    animation-fill-mode: both;
+}
+
+
+@-webkit-keyframes fadein {
+    from {
+        bottom: 0;
+        opacity: 0;
+    }
+
+    to {
+        bottom: 30px;
+        opacity: 1;
+    }
+}
+
+@keyframes fadein {
+    from {
+        bottom: 0;
+        opacity: 0;
+    }
+
+    to {
+        bottom: 30px;
+        opacity: 1;
+    }
+}
+
+@-webkit-keyframes fadeout {
+    from {
+        bottom: 30px;
+        opacity: 1;
+    }
+
+    to {
+        bottom: 0;
+        opacity: 0;
+    }
+}
+
+@keyframes fadeout {
+    from {
+        bottom: 30px;
+        opacity: 1;
+    }
+
+    to {
+        bottom: 0;
+        opacity: 0;
+    }
+}

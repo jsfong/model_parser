@@ -3,6 +3,7 @@ use crate::{
         element_viewer::ElementViewerInput,
         json_viewer::{self},
         model_stats_viewer,
+        status_toast_viewer,
     },
     model::cubs_model::{self, FacetType, ModelData, ModelVersionNumber},
 };
@@ -32,6 +33,23 @@ pub struct QueryResult {
     pub duration: String,
 }
 
+#[derive(Debug, Clone)]
+pub enum StatusMsg {
+    OK(String),
+    Error(String),
+    Info(String),
+    Empty,
+}
+
+impl StatusMsg {
+    pub fn get_msg(&self) -> &str {
+        match self {
+            StatusMsg::OK(msg) | StatusMsg::Error(msg) | StatusMsg::Info(msg) => msg,
+            StatusMsg::Empty => "",
+        }
+    }
+}
+
 #[component]
 pub fn App() -> impl IntoView {
     // Provides context that manages stylesheets, titles, meta tags, etc.
@@ -40,17 +58,17 @@ pub fn App() -> impl IntoView {
     view! {
         // injects a stylesheet into the document <head>
         // id=leptos means cargo-leptos will hot-reload this stylesheet
-        <Stylesheet id="leptos" href="/pkg/leptos_model_parser.css"/>
+        <Stylesheet id="leptos" href="/pkg/leptos_model_parser.css" />
 
         // sets the document title
-        <Title text="Model Parser"/>
+        <Title text="Model Parser" />
 
         // content for this welcome page
         <Router>
             <main>
                 <Routes fallback=move || "Not found.">
-                    <Route path=StaticSegment("") view=HomePage/>
-                    <Route path=WildcardSegment("any") view=NotFound/>
+                    <Route path=StaticSegment("") view=HomePage />
+                    <Route path=WildcardSegment("any") view=NotFound />
                 </Routes>
             </main>
         </Router>
@@ -82,6 +100,8 @@ fn HomePage() -> impl IntoView {
     let (element_nature, set_element_nature): (ReadSignal<Vec<String>>, WriteSignal<Vec<String>>) =
         signal(vec!["".to_string()]);
 
+    let (status_bar, set_status_bar) = signal(StatusMsg::Empty);
+
     let parsed_json_stats = Memo::new(move |_| {
         let stats_str = stats.get();
         let parsed = serde_json::from_str::<Value>(&stats_str).ok();
@@ -89,36 +109,77 @@ fn HomePage() -> impl IntoView {
     });
 
     Effect::new(move |_| {
-        if let Some(Ok(result)) = value.get() {
-            set_model_id.set(result.model_id.clone());
-            set_stats.set(result.stats.clone());
+        // if let Some(Ok(result)) = value.get() {
+        //     set_model_id.set(result.model_id.clone());
+        //     set_stats.set(result.stats.clone());
 
-            // Version
-            let versions: Vec<String> = result
-                .model_versions
-                .iter()
-                .map(|mv| mv.vers_no.to_string())
-                .collect();
-            let latest_version = match versions.first() {
-                Some(v) => v.clone(),
-                None => 0.to_string(),
-            };
-            log!("Version: {:?}", versions);
-            set_model_versions.set(versions);
-            set_selected_version.set(latest_version);
+        //     // Version
+        //     let versions: Vec<String> = result
+        //         .model_versions
+        //         .iter()
+        //         .map(|mv| mv.vers_no.to_string())
+        //         .collect();
+        //     let latest_version = match versions.first() {
+        //         Some(v) => v.clone(),
+        //         None => 0.to_string(),
+        //     };
+        //     log!("Version: {:?}", versions);
+        //     set_model_versions.set(versions);
+        //     set_selected_version.set(latest_version);
 
-            set_duration.set(result.duration.clone());
-            set_query.set(String::new());
+        //     set_duration.set(result.duration.clone());
+        //     set_query.set(String::new());
 
-            // Type and natures
-            let mut types = result.types;
-            let mut natures = result.natures;
-            types.sort();
-            natures.sort();
-            types.insert(0, "All".to_string());
-            natures.insert(0, "All".to_string());
-            set_element_type.set(types);
-            set_element_nature.set(natures);
+        //     // Type and natures
+        //     let mut types = result.types;
+        //     let mut natures = result.natures;
+        //     types.sort();
+        //     natures.sort();
+        //     types.insert(0, "All".to_string());
+        //     natures.insert(0, "All".to_string());
+        //     set_element_type.set(types);
+        //     set_element_nature.set(natures);
+        // }
+
+        if let Some(result) = value.get() {
+            match result {
+                Ok(result) => {
+                    //Basic stats
+                    set_model_id.set(result.model_id.clone());
+                    set_stats.set(result.stats.clone());
+                    let versions: Vec<String> = result
+                        .model_versions
+                        .iter()
+                        .map(|mv| mv.vers_no.to_string())
+                        .collect();
+                    let latest_version = match versions.first() {
+                        Some(v) => v.clone(),
+                        None => 0.to_string(),
+                    };
+                    set_model_versions.set(versions);
+                    set_selected_version.set(latest_version);
+                    set_duration.set(result.duration.clone());
+                    set_query.set(String::new());
+
+                    // Type and natures
+                    let mut types = result.types;
+                    let mut natures = result.natures;
+                    types.sort();
+                    natures.sort();
+                    types.insert(0, "All".to_string());
+                    natures.insert(0, "All".to_string());
+                    set_element_type.set(types);
+                    set_element_nature.set(natures);
+
+                    //Set status bar
+                    set_status_bar.set(StatusMsg::Empty);
+                }
+                Err(e) => {
+                    let err: ServerFnError = e;
+                    log!("[Error] {}", err.to_string());
+                    set_status_bar.set(StatusMsg::Error(err.to_string()));
+                }
+            }
         }
     });
 
@@ -132,60 +193,86 @@ fn HomePage() -> impl IntoView {
 
     view! {
         <h1>"Model Parser"</h1>
-        <br/>
+        <br />
 
         // Input
-        <ActionForm action=parse_model_action >
+        <ActionForm action=parse_model_action>
             <div class="flex-cmd-parent">
-                <label for="model_id">Model Id: </label>
-                <input type="text" name="model_id" placeholder="Model Id" size=40 value="aa5bc4b2-156f-4bad-b13a-4ccf31df53ca" class="flex-cmd-model-id"/>
-                <label for="vers_no">Version No: </label>
-                <select id="vers_no" name="vers_no" on:change= move |ev|{
-                    let value = event_target_value(&ev);
-                    set_selected_version.set(value);
-                }>
-                    // <option value="">Empty</option>
-                    {move ||
-                        model_versions.get().into_iter().map(|v|{
-                            let value = v.clone();
-                            view! {
-                                <option value={value}>{v}</option>
-                            }
-                        }).collect_view()
+                <label for="model_id">Model Id:</label>
+                <input
+                    type="text"
+                    name="model_id"
+                    placeholder="Model Id"
+                    size=40
+                    value="aa5bc4b2-156f-4bad-b13a-4ccf31df53ca"
+                    class="flex-cmd-model-id"
+                />
+                <label for="vers_no">Version No:</label>
+                <select
+                    id="vers_no"
+                    name="vers_no"
+                    on:change=move |ev| {
+                        let value = event_target_value(&ev);
+                        set_selected_version.set(value);
                     }
+                >
+                    // <option value="">Empty</option>
+                    {move || {
+                        model_versions
+                            .get()
+                            .into_iter()
+                            .map(|v| {
+                                let value = v.clone();
+                                view! { <option value=value>{v}</option> }
+                            })
+                            .collect_view()
+                    }}
                 </select>
-                <button type="submit" class="flex-cmd-item">Read model</button>
+                <button type="submit" class="flex-cmd-item">
+                    Read model
+                </button>
             </div>
         </ActionForm>
 
-
         <br />
 
-        //View
+        // View
         <div class="flex-container">
             <div class="flex-container-view">
-            // Element viewer
-            { move ||
-                if !model_id.get().is_empty() {
-                    view! {
+                // Element viewer
+                {move || {
+                    if !model_id.get().is_empty() {
+                        view! {
                             <ActionForm action=query_model_action>
-                                <ElementViewerInput model_id=model_id version=selected_version types=element_type natures=element_nature set_query=set_query/>
+                                <ElementViewerInput
+                                    model_id=model_id
+                                    version=selected_version
+                                    types=element_type
+                                    natures=element_nature
+                                    set_query=set_query
+                                />
                             </ActionForm>
-                            <json_viewer::JsonViewer json_value=parsed_query collapsed=false/>
-                            <div> "Duration: " {duration}</div>
-                        }.into_any()
+                            <json_viewer::JsonViewer json_value=parsed_query collapsed=false />
+                            <div>"Duration: " {duration}</div>
+                        }
+                            .into_any()
                     } else {
-                        view!{}.into_any()
+                        view! {}.into_any()
                     }
-                }
+                }}
             </div>
-
 
             // RHS
             <div class="flex-container-rhs">
                 <model_stats_viewer::ModelStatsViewer model_stats=parsed_json_stats />
             </div>
         </div>
+
+        // Status bar
+        // <div id="statusbar" class:show=move || show_status_bar.get() == true>Testing</div>
+        // <div id="statusbar" class=move || format!("{}", if status_bar.get() != StatusMsg::Empty { "show"} else {""})>Testing</div>
+        <status_toast_viewer::StatusToastViewer status=status_bar set_status=set_status_bar/>
+        
     }
 }
 
@@ -206,9 +293,7 @@ fn NotFound() -> impl IntoView {
         resp.set_status(actix_web::http::StatusCode::NOT_FOUND);
     }
 
-    view! {
-        <h1>"Not Found"</h1>
-    }
+    view! { <h1>"Not Found"</h1> }
 }
 
 #[server(ParseModel, "/api")]
