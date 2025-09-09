@@ -1,5 +1,4 @@
 use crate::model::cache::{self, QuickCache};
-use crate::model::database_util;
 
 use super::cubs_model::{ModelData, ModelResponse, ModelVersionNumber};
 use anyhow::anyhow;
@@ -48,6 +47,7 @@ where
 }
 
 async fn read_latest_model_data_from_db(
+    pg_pool: &sqlx::Pool<sqlx::Postgres>,
     model_id: &String,
     cache: &QuickCache,
 ) -> Result<ModelData, Box<dyn Error>> {
@@ -58,9 +58,6 @@ async fn read_latest_model_data_from_db(
         &model_id
     );
 
-    //Connect to DB
-    let pool = database_util::connect_to_db().await;
-
     // Retrieve from DB
     println!("[read_model_data_from_db] Retreiving from DB ...");
     let saved_model = sqlx::query_as!(
@@ -69,7 +66,7 @@ async fn read_latest_model_data_from_db(
 LIMIT 1"#,
         model_id
     )
-    .fetch_one(&pool)
+    .fetch_one(pg_pool)
     .await?;
     println!(
         "[read_model_data_from_db]  Load saved model with model id: {} version: {} from DB",
@@ -100,7 +97,8 @@ LIMIT 1"#,
 }
 
 pub async fn read_model_data_versions(
-    model_id: &String,
+    pg_pool: &sqlx::Pool<sqlx::Postgres>,
+    model_id: &String
 ) -> Result<Vec<ModelVersionNumber>, Box<dyn Error>> {
     let start_time = Instant::now();
 
@@ -109,16 +107,13 @@ pub async fn read_model_data_versions(
         &model_id
     );
 
-    //Connect to DB
-    let pool = database_util::connect_to_db().await;
-
     // Retrieve from DB
     let model_versions = sqlx::query_as!(
         ModelVersionNumber,
         r#"SELECT vers_no FROM cubs_object_model.saved_model WHERE model_id = $1 ORDER BY vers_no DESC"#,
         model_id
     )
-    .fetch_all(&pool)
+    .fetch_all(pg_pool)
     .await?;
 
     //Log time
@@ -132,6 +127,7 @@ pub async fn read_model_data_versions(
 }
 
 async fn read_model_data_from_db_with_version(
+    pg_pool: &sqlx::Pool<sqlx::Postgres>,
     model_id: &String,
     version_no: i32,
     cache: &QuickCache,
@@ -143,9 +139,6 @@ async fn read_model_data_from_db_with_version(
         &model_id
     );
 
-    //Connect to DB
-    let pool = database_util::connect_to_db().await;
-
     // Retrieve from DB
     println!("[read_model_data_from_db_with_version] Retreiving from DB ...");
     let saved_model = sqlx::query_as!(
@@ -153,7 +146,7 @@ async fn read_model_data_from_db_with_version(
         r#"SELECT model_id, vers_no, saved_gzip FROM cubs_object_model.saved_model WHERE model_id = $1 and vers_no = $2"#,
         model_id, version_no
     )
-    .fetch_one(&pool)
+    .fetch_one(pg_pool)
     .await?;
     println!(
         "[read_model_data_from_db_with_version]  Load saved model with model id: {} version: {} from DB",
@@ -187,6 +180,7 @@ async fn read_model_data_from_db_with_version(
 }
 
 pub async fn read_model_data(
+    pg_pool: &sqlx::Pool<sqlx::Postgres>,
     model_id: &String,
     version_num: i32,
 ) -> Result<ModelData, Box<dyn Error>> {
@@ -225,7 +219,7 @@ pub async fn read_model_data(
     }
 
     // Get from DB
-    let model_data = read_model_data_from_db_with_version(model_id, version_num, &cache).await;
+    let model_data = read_model_data_from_db_with_version(pg_pool, model_id, version_num, &cache).await;
 
     //Log time
     let elapsed_time = start_time.elapsed();

@@ -304,9 +304,17 @@ pub async fn parse_model(model_id: String, vers_no: String) -> Result<ServerResu
     use leptos::logging::log;
     use std::time::Instant;
     let start_time = Instant::now();
+    use crate::model::state;
+    use leptos_actix::*;
+    use actix_web::web::Data;
+
+    //Get app state
+    let app_state: Data<state::AppState> = extract().await?;
+    log!("App state -> {:?}", app_state);
+    let pg_pool = &app_state.pg_pool;
 
     //Read all model version
-    let model_versions = parser::read_model_data_versions(&model_id)
+    let model_versions = parser::read_model_data_versions(&pg_pool, &model_id)
         .await
         .unwrap_or_default();
 
@@ -314,7 +322,7 @@ pub async fn parse_model(model_id: String, vers_no: String) -> Result<ServerResu
     let version_num = vers_no
         .parse::<i32>()
         .unwrap_or_else(|_| model_versions.first().map_or(0, |v| v.vers_no));
-    let model_data = parser::read_model_data(&model_id, version_num).await;
+    let model_data = parser::read_model_data(&pg_pool, &model_id, version_num).await;
     let model_data = match model_data {
         Ok(model_data) => model_data,
         Err(_) => {
@@ -365,6 +373,10 @@ pub async fn query_model(
     use crate::model::parser;
     use leptos::logging::log;
     use std::time::Instant;
+    use crate::model::state;
+    use leptos_actix::*;
+    use actix_web::web::Data;
+
     log!(
         "[query_model] Parsing model with id {} with type {} and nature {} and version {}",
         model_id,
@@ -387,9 +399,14 @@ pub async fn query_model(
 
     let start_time = Instant::now();
 
+    // Get DB pool
+    let app_state: Data<state::AppState> = extract().await?;
+    log!("App state -> {:?}", app_state);
+    let pg_pool = &app_state.pg_pool;
+
     // Read saved model
     let version_num = vers_no.parse::<i32>().unwrap_or_else(|_| 0);
-    let model_data = parser::read_model_data(&model_id, version_num).await;
+    let model_data = parser::read_model_data(pg_pool, &model_id, version_num).await;
     let model_data = match model_data {
         Ok(model_data) => model_data,
         Err(_) => {

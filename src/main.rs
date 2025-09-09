@@ -1,14 +1,18 @@
+
+
 #[cfg(feature = "ssr")]
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     use actix_files::Files;
     use actix_web::*;
     use dotenv::dotenv;
-    use leptos::prelude::*;
     use leptos::config::get_configuration;
-    use leptos_meta::MetaTags;
+    use leptos::prelude::*;
     use leptos_actix::{generate_route_list, LeptosRoutes};
+    use leptos_meta::MetaTags;
     use leptos_model_parser::app::*;
+    use leptos_model_parser::model::state::AppState;
+    use leptos_model_parser::model::database_util::{self, connect_to_db};
 
     let conf = get_configuration(None).unwrap();
     let addr = conf.leptos_options.site_addr;
@@ -16,14 +20,18 @@ async fn main() -> std::io::Result<()> {
     // Load env file
     dotenv().ok();
 
+    // Setup DB connection
+    let pg_pool = connect_to_db().await;
+    let app_state = AppState {
+        pg_pool,
+    };
+
     HttpServer::new(move || {
 
         // Generate the list of routes in your Leptos App
         let routes = generate_route_list(App);
         let leptos_options = &conf.leptos_options;
         let site_root = leptos_options.site_root.clone().to_string();
-
-
         println!("listening on http://{}", &addr);
 
         App::new()
@@ -54,6 +62,7 @@ async fn main() -> std::io::Result<()> {
                 }
             })
             .app_data(web::Data::new(leptos_options.to_owned()))
+            .app_data(web::Data::new(app_state.to_owned()))
         //.wrap(middleware::Compress::default())
     })
     .bind(&addr)?
