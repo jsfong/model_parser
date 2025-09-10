@@ -22,9 +22,7 @@ async fn main() -> std::io::Result<()> {
 
     // Setup DB connection
     let pg_pool = connect_to_db().await;
-    let app_state = AppState {
-        pg_pool,
-    };
+    let app_state = AppState::new().await;
 
     HttpServer::new(move || {
 

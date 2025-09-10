@@ -1,4 +1,6 @@
-use crate::model::cache::{self, QuickCache};
+
+
+use crate::model::state::QuickCache;
 
 use super::cubs_model::{ModelData, ModelResponse, ModelVersionNumber};
 use anyhow::anyhow;
@@ -16,7 +18,6 @@ struct SavedModel {
     pub vers_no: i32,
     pub saved_gzip: Vec<u8>,
 }
-// TODO expose version to UI
 
 pub fn read_model_response_from_file<P>(path: P) -> Result<ModelResponse, Box<dyn Error>>
 where
@@ -181,6 +182,7 @@ async fn read_model_data_from_db_with_version(
 
 pub async fn read_model_data(
     pg_pool: &sqlx::Pool<sqlx::Postgres>,
+    cache: &QuickCache,
     model_id: &String,
     version_num: i32,
 ) -> Result<ModelData, Box<dyn Error>> {
@@ -204,7 +206,6 @@ pub async fn read_model_data(
     }
 
     // Get from cache
-    let cache = cache::get_quick_cache();
     let key = model_id.clone() + "_" + &version_num.to_string();
     if let Some(cached_model_data) = cache.get(&key) {
         println!("[read_model_data] Found model data {} in cache", model_id);
