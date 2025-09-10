@@ -124,7 +124,12 @@ impl CusObject for Element {
 }
 
 impl Element {
-    pub fn get_json_value(&self, facet_type: &FacetType, pointer: &str, is_show_element_id: bool) -> Option<Value> {
+    pub fn get_json_value(
+        &self,
+        facet_type: &FacetType,
+        pointer: &str,
+        is_show_element_id: bool,
+    ) -> Option<Value> {
         // Construct filtered element
         let filtered_element = match facet_type {
             FacetType::CoreFacets => Element {
@@ -144,8 +149,14 @@ impl Element {
             },
         };
 
-        let facets_map = match facet_type {
-            FacetType::CoreFacets => &filtered_element.core_facets,
+        let mut combine_core_facet = filtered_element.core_facets.clone();
+        let facets_map: &HashMap<String, Value> = match facet_type {
+            FacetType::CoreFacets => {
+                // Add common field into core facet for parsing
+                let common_fields: HashMap<String, Value> = self.get_common_fields_values_map();
+                combine_core_facet.extend(common_fields);
+                &combine_core_facet
+            }
             FacetType::DynamicFacets => &filtered_element.dynamic_facets,
             FacetType::Facets => &filtered_element.facets,
         };
@@ -165,13 +176,31 @@ impl Element {
             Some(v) => {
                 let result = if is_show_element_id {
                     let e = FilteredElementResult::from(&filtered_element, v.take());
-                     serde_json::to_value(e).ok()
+                    serde_json::to_value(e).ok()
                 } else {
                     Some(v.take())
                 };
                 result
             }
             None => None,
+        }
+    }
+
+    fn get_common_fields_values_map(&self) -> HashMap<String, serde_json::Value> {
+        let mut fields_values_map: HashMap<String, serde_json::Value> = HashMap::new();
+
+        Self::set_value_to_map(& mut fields_values_map, "id", &self.id.clone());
+        Self::set_value_to_map(& mut fields_values_map, "type", &self.type_.clone());
+        Self::set_value_to_map(& mut fields_values_map, "nature", &self.nature.clone());
+        Self::set_value_to_map(& mut fields_values_map, "name", &self.name.clone());
+
+        fields_values_map
+    }
+
+    fn set_value_to_map(map: &mut HashMap<String, serde_json::Value>, key: &str, fields: &str) {
+        let field_value = serde_json::to_value(fields).ok();
+        if let Some(value) = field_value {
+            map.insert(key.to_string(), value);
         }
     }
 }
