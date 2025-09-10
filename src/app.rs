@@ -31,6 +31,8 @@ pub struct ServerResult {
 pub struct QueryResult {
     pub data: String,
     pub duration: String,
+    pub result_count: usize,
+    pub total_result_count: usize,
 }
 
 #[derive(Debug, Clone)]
@@ -101,6 +103,8 @@ fn HomePage() -> impl IntoView {
         signal(vec!["".to_string()]);
 
     let (status_bar, set_status_bar) = signal(StatusMsg::Empty);
+    let (result_count, set_result_count) = signal(0 as usize);
+    let (total_result_count, set_total_result_count) = signal(0 as usize);
 
     let parsed_json_stats = Memo::new(move |_| {
         let stats_str = stats.get();
@@ -109,37 +113,6 @@ fn HomePage() -> impl IntoView {
     });
 
     Effect::new(move |_| {
-        // if let Some(Ok(result)) = value.get() {
-        //     set_model_id.set(result.model_id.clone());
-        //     set_stats.set(result.stats.clone());
-
-        //     // Version
-        //     let versions: Vec<String> = result
-        //         .model_versions
-        //         .iter()
-        //         .map(|mv| mv.vers_no.to_string())
-        //         .collect();
-        //     let latest_version = match versions.first() {
-        //         Some(v) => v.clone(),
-        //         None => 0.to_string(),
-        //     };
-        //     log!("Version: {:?}", versions);
-        //     set_model_versions.set(versions);
-        //     set_selected_version.set(latest_version);
-
-        //     set_duration.set(result.duration.clone());
-        //     set_query.set(String::new());
-
-        //     // Type and natures
-        //     let mut types = result.types;
-        //     let mut natures = result.natures;
-        //     types.sort();
-        //     natures.sort();
-        //     types.insert(0, "All".to_string());
-        //     natures.insert(0, "All".to_string());
-        //     set_element_type.set(types);
-        //     set_element_nature.set(natures);
-        // }
 
         if let Some(result) = value.get() {
             match result {
@@ -187,6 +160,8 @@ fn HomePage() -> impl IntoView {
         if let Some(Ok(result)) = query_value.get() {
             set_query.set(result.data);
             set_duration.set(result.duration);
+            set_result_count.set(result.result_count);
+            set_total_result_count.set(result.total_result_count);
         }
     });
     let parsed_query = Memo::new(move |_| serde_json::from_str::<Value>(&query.get()).ok());
@@ -252,6 +227,7 @@ fn HomePage() -> impl IntoView {
                                     set_query=set_query
                                 />
                             </ActionForm>
+                            <div class="result-count">{result_count} " out of " {total_result_count} " results"</div>
                             <json_viewer::JsonViewer json_value=parsed_query collapsed=false />
                             <div>"Duration: " {duration}</div>
                         }
@@ -504,6 +480,8 @@ pub async fn query_model(
             "Query model took {} ms",
             elapsed_time.as_millis().to_string()
         ),
+        result_count: limited_query_result.len(),
+        total_result_count: filtered_elements.len(),
     })
 }
 
