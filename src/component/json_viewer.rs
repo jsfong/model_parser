@@ -2,6 +2,7 @@ use leptos::{ html::P, logging::log, prelude::*};
 use serde_json::Value;
 
 const PADDING: i32 = 10;
+const COLLAPSED_OBJECT_WHEN_MORE_THAN_LEVEL: i32 = 2;
 
 #[component]
 pub fn JsonViewer(json_value: Memo<Option<Value>>, collapsed: bool, set_selected_object_id: WriteSignal<Option<String>>) -> impl IntoView {
@@ -30,6 +31,7 @@ fn JsonNode(value: Value, level: i32, is_last: bool, collapsed: bool, key: Optio
     match value {
         Value::Object(obj) => {
             let (is_collapsed, set_collapsed) = signal(collapsed);
+            set_collapsed.update(|c| *c = *c || level > COLLAPSED_OBJECT_WHEN_MORE_THAN_LEVEL);
             let entries: Vec<(String, Value)> = obj.into_iter().collect();
             let obj_len = entries.len();
             
