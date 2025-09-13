@@ -13,7 +13,7 @@ pub fn StatusToastViewer(
 
     // Use timeout fn to reset status
     let UseTimeoutFnReturn {
-        start: clear_status, is_pending, ..
+        start: clear_status, is_pending: _, ..
     } = use_timeout_fn(
         move |_: ()| {
             set_status.set(StatusMsg::Empty);

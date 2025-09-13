@@ -2,8 +2,7 @@ use crate::{
     component::{
         element_viewer::ElementViewerInput,
         json_viewer::{self},
-        model_stats_viewer,
-        status_toast_viewer,
+        model_stats_viewer, relationship_viewer, status_toast_viewer,
     },
     model::cubs_model::{self, FacetType, ModelData, ModelVersionNumber},
 };
@@ -52,6 +51,14 @@ impl StatusMsg {
     }
 }
 
+//RHS mode
+#[derive(Clone)]
+pub enum RHSMode {
+    ModelStats,
+    Rel(String),
+    Default,
+}
+
 #[component]
 pub fn App() -> impl IntoView {
     // Provides context that manages stylesheets, titles, meta tags, etc.
@@ -94,7 +101,6 @@ fn HomePage() -> impl IntoView {
     let (selected_version, set_selected_version) = signal("".to_string());
 
     let (stats, set_stats) = signal("".to_string());
-    let (result, set_result) = signal("".to_string());
     let (duration, set_duration) = signal("".to_string());
     let (query, set_query) = signal("".to_string());
     let (element_type, set_element_type): (ReadSignal<Vec<String>>, WriteSignal<Vec<String>>) =
@@ -106,7 +112,10 @@ fn HomePage() -> impl IntoView {
     let (result_count, set_result_count) = signal(0 as usize);
     let (total_result_count, set_total_result_count) = signal(0 as usize);
 
-    let (selected_object_id, set_selected_object_id): (ReadSignal<Option<String>>, WriteSignal<Option<String>>) = signal(None);
+    let (selected_object_id, set_selected_object_id): (ReadSignal<String>, WriteSignal<String>) =
+        signal("".to_string());
+
+    let (rhs_mode, set_rhs_mode) = signal(RHSMode::Default);
 
     let parsed_json_stats = Memo::new(move |_| {
         let stats_str = stats.get();
@@ -115,7 +124,6 @@ fn HomePage() -> impl IntoView {
     });
 
     Effect::new(move |_| {
-
         if let Some(result) = value.get() {
             match result {
                 Ok(result) => {
@@ -212,7 +220,7 @@ fn HomePage() -> impl IntoView {
 
         // View
         <div class="flex-container">
-            //Main view
+            // Main view
             <div class="flex-container-view">
                 // Element viewer
                 {move || {
@@ -228,10 +236,19 @@ fn HomePage() -> impl IntoView {
                                 />
                             </ActionForm>
                             <div class="staus-bar-flex-parent">
-                                <span class="staus-bar-flex-item">"Selected "{selected_object_id}</span>
-                                <div class="staus-bar-flex-item  staus-bar-flex-result-count">{result_count} " out of " {total_result_count} " results"</div>
+                                <span class="staus-bar-flex-item">
+                                    "Selected "{selected_object_id}
+                                </span>
+                                <div class="staus-bar-flex-item  staus-bar-flex-result-count">
+                                    {result_count} " out of " {total_result_count} " results"
+                                </div>
                             </div>
-                            <json_viewer::JsonViewer json_value=parsed_query collapsed=false set_selected_object_id=set_selected_object_id/>
+                            <json_viewer::JsonViewer
+                                json_value=parsed_query
+                                collapsed=false
+                                set_selected_object_id=set_selected_object_id
+                                set_rhs_mode=set_rhs_mode
+                            />
                             <div>"Duration: " {duration}</div>
                         }
                             .into_any()
@@ -243,15 +260,34 @@ fn HomePage() -> impl IntoView {
 
             // RHS
             <div class="flex-container-rhs">
-                <model_stats_viewer::ModelStatsViewer model_stats=parsed_json_stats />
+                {move || match rhs_mode.get() {
+                    RHSMode::Rel(_) => {
+                        log!("[RHS] Rending relationship viewer");
+                        view! {
+                            <relationship_viewer::RelationshipViewer
+                                model_id=model_id
+                                selected_version=selected_version
+                                selected_object_id=selected_object_id
+                            />
+                        }
+                            .into_any()
+                    }
+                    _ => {
+                        log!("[RHS] Rending model stats viewer");
+                        view! {
+                            <model_stats_viewer::ModelStatsViewer model_stats=parsed_json_stats />
+                        }
+                            .into_any()
+                    }
+                }}
+
             </div>
         </div>
 
         // Status bar
         // <div id="statusbar" class:show=move || show_status_bar.get() == true>Testing</div>
         // <div id="statusbar" class=move || format!("{}", if status_bar.get() != StatusMsg::Empty { "show"} else {""})>Testing</div>
-        <status_toast_viewer::StatusToastViewer status=status_bar set_status=set_status_bar/>
-        
+        <status_toast_viewer::StatusToastViewer status=status_bar set_status=set_status_bar />
     }
 }
 
@@ -283,15 +319,14 @@ pub async fn parse_model(model_id: String, vers_no: String) -> Result<ServerResu
     use leptos::logging::log;
     use std::time::Instant;
     let start_time = Instant::now();
-    use crate::model::state;
-    use leptos_actix::*;
+    use crate::model::app_state;
     use actix_web::web::Data;
+    use leptos_actix::*;
 
     //Get app state
-    let app_state: Data<state::AppState> = extract().await?;
-    log!("App state -> {:?}", app_state);
+    let app_state: Data<app_state::AppState> = extract().await?;
     let pg_pool = app_state.get_pg_pool_ref();
-    let cache = app_state.get_cache();
+    let cache = app_state.get_model_cache();
 
     //Read all model version
     let model_versions = parser::read_model_data_versions(&pg_pool, &model_id)
@@ -350,12 +385,12 @@ pub async fn query_model(
     facet_type: String,
     is_detail: Option<String>,
 ) -> Result<QueryResult, ServerFnError> {
+    use crate::model::app_state;
     use crate::model::parser;
-    use leptos::logging::log;
-    use std::time::Instant;
-    use crate::model::state;
-    use leptos_actix::*;
     use actix_web::web::Data;
+    use leptos::logging::log;
+    use leptos_actix::*;
+    use std::time::Instant;
 
     log!(
         "[query_model] Parsing model with id {} with type {} and nature {} and version {}",
@@ -380,10 +415,9 @@ pub async fn query_model(
     let start_time = Instant::now();
 
     // Get DB pool
-    let app_state: Data<state::AppState> = extract().await?;
-    log!("App state -> {:?}", app_state);
+    let app_state: Data<app_state::AppState> = extract().await?;
     let pg_pool = app_state.get_pg_pool_ref();
-    let cache = app_state.get_cache();
+    let cache = app_state.get_model_cache();
 
     // Read saved model
     let version_num = vers_no.parse::<i32>().unwrap_or_else(|_| 0);

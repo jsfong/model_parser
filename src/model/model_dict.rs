@@ -181,7 +181,7 @@ pub fn generate_array_field_count(value: &Value, field_name: &str) -> Option<Ele
     Some(ElementCounts { value: counts })
 }
 
-fn get_json_array_len(value: &Value) -> u32 {
+fn _get_json_array_len(value: &Value) -> u32 {
     if let Some(array) = value.as_array() {
         array.len() as u32
     } else {

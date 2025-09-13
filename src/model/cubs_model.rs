@@ -3,6 +3,7 @@ use serde_json::{Map, Value};
 use std::collections::HashMap;
 use std::{char, fmt};
 
+
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ModelResponse {

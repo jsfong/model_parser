@@ -1,19 +1,32 @@
-use leptos::{ html::P, logging::log, prelude::*};
+use leptos::prelude::*;
 use serde_json::Value;
+
+use crate::app::RHSMode;
 
 const PADDING: i32 = 10;
 const COLLAPSED_OBJECT_WHEN_MORE_THAN_LEVEL: i32 = 2;
 
 #[component]
-pub fn JsonViewer(json_value: Memo<Option<Value>>, collapsed: bool, set_selected_object_id: WriteSignal<Option<String>>) -> impl IntoView {
+pub fn JsonViewer(json_value: Memo<Option<Value>>, collapsed: bool, set_selected_object_id: WriteSignal<String>, set_rhs_mode: WriteSignal<RHSMode>) -> impl IntoView {
     view! {
-         <div class="json-container">
+        <div class="json-container">
             <div class="json-viewer">
                 {move || {
                     if let Some(v) = json_value.get() {
-                        view! {<JsonNode value=v level=1 is_last=true  collapsed=collapsed key=None set_selected_object_id=set_selected_object_id/>}.into_any()
-                    }else{
-                        view! {<JsonNotFound />}.into_any()
+                        view! {
+                            <JsonNode
+                                value=v
+                                level=1
+                                is_last=true
+                                collapsed=collapsed
+                                key=None
+                                set_selected_object_id=set_selected_object_id
+                                set_rhs_mode=set_rhs_mode
+                            />
+                        }
+                            .into_any()
+                    } else {
+                        view! { <JsonNotFound /> }.into_any()
                     }
                 }}
             </div>
@@ -25,7 +38,7 @@ pub fn JsonViewer(json_value: Memo<Option<Value>>, collapsed: bool, set_selected
 
 
 #[component]
-fn JsonNode(value: Value, level: i32, is_last: bool, collapsed: bool, key: Option<String>, set_selected_object_id: WriteSignal<Option<String>>) -> impl IntoView {
+fn JsonNode(value: Value, level: i32, is_last: bool, collapsed: bool, key: Option<String>, set_selected_object_id: WriteSignal<String>, set_rhs_mode: WriteSignal<RHSMode>) -> impl IntoView {
     // let indent_style = format!("margin-left: {}px;", level * PADDING);
     
     match value {
@@ -39,13 +52,17 @@ fn JsonNode(value: Value, level: i32, is_last: bool, collapsed: bool, key: Optio
                 view! {
                     <span>
                         <span class="json-brace">"{}"</span>
-                        {if !is_last { Some(view! { <span class="json-comma">","</span> }) } else { None }}
+                        {if !is_last {
+                            Some(view! { <span class="json-comma">","</span> })
+                        } else {
+                            None
+                        }}
                     </span>
                 }.into_any()
             } else {
                 view! {
                     <div class="json-object">
-                        <span 
+                        <span
                             class="json-toggle"
                             on:click=move |_| set_collapsed.update(|c| *c = !*c)
                         >
@@ -53,22 +70,41 @@ fn JsonNode(value: Value, level: i32, is_last: bool, collapsed: bool, key: Optio
                         </span>
                         <span class="json-brace">"{"</span>
                         <div class="json-object-content" class:collapsed=is_collapsed>
-                            {entries.into_iter().enumerate().map(|(i, (key, val))| {
-                                let is_last_item = i == obj_len - 1;
-                                let clone_key = Some(key.clone());
-                                view! {
-                                    <div class="json-property" style=format!("margin-left: {}px;", (level ) * PADDING)>
-                                        <span class="json-key">"\""</span>
-                                        <span class="json-key-text">{key}</span>
-                                        <span class="json-key">"\""</span>
-                                        <span class="json-colon">": "</span>
-                                        <JsonNode value=val level=level + 1 is_last=is_last_item collapsed=collapsed key=clone_key set_selected_object_id=set_selected_object_id/>
-                                    </div>
-                                }
-                            }).collect_view()}
+                            {entries
+                                .into_iter()
+                                .enumerate()
+                                .map(|(i, (key, val))| {
+                                    let is_last_item = i == obj_len - 1;
+                                    let clone_key = Some(key.clone());
+                                    view! {
+                                        <div
+                                            class="json-property"
+                                            style=format!("margin-left: {}px;", (level) * PADDING)
+                                        >
+                                            <span class="json-key">"\""</span>
+                                            <span class="json-key-text">{key}</span>
+                                            <span class="json-key">"\""</span>
+                                            <span class="json-colon">": "</span>
+                                            <JsonNode
+                                                value=val
+                                                level=level + 1
+                                                is_last=is_last_item
+                                                collapsed=collapsed
+                                                key=clone_key
+                                                set_selected_object_id=set_selected_object_id
+                                                set_rhs_mode=set_rhs_mode
+                                            />
+                                        </div>
+                                    }
+                                })
+                                .collect_view()}
                             <div style=format!("margin-left: {}px;", PADDING + 5)>
                                 <span class="json-brace">"}"</span>
-                                {if !is_last { Some(view! { <span class="json-comma">","</span> }) } else { None }}
+                                {if !is_last {
+                                    Some(view! { <span class="json-comma">","</span> })
+                                } else {
+                                    None
+                                }}
                             </div>
                         </div>
                     </div>
@@ -83,13 +119,17 @@ fn JsonNode(value: Value, level: i32, is_last: bool, collapsed: bool, key: Optio
                 view! {
                     <span>
                         <span class="json-brace">"[]"</span>
-                        {if !is_last { Some(view! { <span class="json-comma">","</span> }) } else { None }}
+                        {if !is_last {
+                            Some(view! { <span class="json-comma">","</span> })
+                        } else {
+                            None
+                        }}
                     </span>
                 }.into_any()
             } else {
                 view! {
                     <div class="json-array">
-                        <span 
+                        <span
                             class="json-toggle"
                             on:click=move |_| set_collapsed.update(|c| *c = !*c)
                         >
@@ -97,17 +137,36 @@ fn JsonNode(value: Value, level: i32, is_last: bool, collapsed: bool, key: Optio
                         </span>
                         <span class="json-brace">"["</span>
                         <div class="json-array-content" class:collapsed=is_collapsed>
-                            {arr.into_iter().enumerate().map(|(i, val)| {
-                                let is_last_item = i == length - 1;
-                                view! {
-                                    <div class="json-array-item" style=format!("margin-left: {}px;", (level + 1) * PADDING)>
-                                        <JsonNode value=val level=level + 1 is_last=is_last_item collapsed=collapsed key=None set_selected_object_id=set_selected_object_id/>
-                                    </div>
-                                }
-                            }).collect_view()}
+                            {arr
+                                .into_iter()
+                                .enumerate()
+                                .map(|(i, val)| {
+                                    let is_last_item = i == length - 1;
+                                    view! {
+                                        <div
+                                            class="json-array-item"
+                                            style=format!("margin-left: {}px;", (level + 1) * PADDING)
+                                        >
+                                            <JsonNode
+                                                value=val
+                                                level=level + 1
+                                                is_last=is_last_item
+                                                collapsed=collapsed
+                                                key=None
+                                                set_selected_object_id=set_selected_object_id
+                                                set_rhs_mode=set_rhs_mode
+                                            />
+                                        </div>
+                                    }
+                                })
+                                .collect_view()}
                             <div style=format!("margin-left: {}px;", level * 20)>
                                 <span class="json-brace">"]"</span>
-                                {if !is_last { Some(view! { <span class="json-comma">","</span> }) } else { None }}
+                                {if !is_last {
+                                    Some(view! { <span class="json-comma">","</span> })
+                                } else {
+                                    None
+                                }}
                             </div>
                         </div>
                     </div>
@@ -118,28 +177,42 @@ fn JsonNode(value: Value, level: i32, is_last: bool, collapsed: bool, key: Optio
             view! {
                 <span class="json-string">
                     <span class="json-quote">"\""</span>
-                    // <span class="json-string-content">{s}</span>
-                    {
-                       if let Some(field_key) = key  {
-
+                    // Custom handling of cubsobject id
+                    {if let Some(field_key) = key {
                         if field_key == "id" {
-                            Some (
-                                view!{
-                                    <span class="json-string-content, tooltip">{s.clone()}
-                                        <span class="tooltiptext" on:click=move |_| { set_selected_object_id.update(|c| *c=Some(s.clone()));}>Tooltip text</span> 
-                                    </span>            
-                                }.into_any()
+                            Some(
+                                view! {
+                                    <span class="json-string-content, tooltip">
+                                        {s.clone()}
+                                        <span
+                                            class="tooltiptext"
+                                            on:click=move |_| {
+                                                set_selected_object_id.update(|c| *c = s.clone());
+                                                set_rhs_mode.update(|m| *m = RHSMode::Rel(s.clone()));
+                                            }
+                                        >
+                                            Check relationship
+                                        </span>
+                                    </span>
+                                }
+                                    .into_any(),
                             )
                         } else {
-                            Some(view!{<span class="json-string-content">{s}</span>}.into_any())
+                            Some(view! { <span class="json-string-content">{s}</span> }.into_any())
                         }
-                        
-                       } else {
-                        Some(view!{<span class="json-string-content">{s}</span>}.into_any())
-                       }
-                    }
+                    } else {
+                        Some(
+
+                            view! { <span class="json-string-content">{s}</span> }
+                                .into_any(),
+                        )
+                    }}
                     <span class="json-quote">"\""</span>
-                    {if !is_last { Some(view! { <span class="json-comma">","</span> }) } else { None }}
+                    {if !is_last {
+                        Some(view! { <span class="json-comma">","</span> })
+                    } else {
+                        None
+                    }}
                 </span>
             }.into_any()
         },
@@ -147,7 +220,11 @@ fn JsonNode(value: Value, level: i32, is_last: bool, collapsed: bool, key: Optio
             view! {
                 <span class="json-number">
                     {n.to_string()}
-                    {if !is_last { Some(view! { <span class="json-comma">","</span> }) } else { None }}
+                    {if !is_last {
+                        Some(view! { <span class="json-comma">","</span> })
+                    } else {
+                        None
+                    }}
                 </span>
             }.into_any()
         },
@@ -155,7 +232,11 @@ fn JsonNode(value: Value, level: i32, is_last: bool, collapsed: bool, key: Optio
             view! {
                 <span class="json-boolean">
                     {b.to_string()}
-                    {if !is_last { Some(view! { <span class="json-comma">","</span> }) } else { None }}
+                    {if !is_last {
+                        Some(view! { <span class="json-comma">","</span> })
+                    } else {
+                        None
+                    }}
                 </span>
             }.into_any()
         },
@@ -163,7 +244,11 @@ fn JsonNode(value: Value, level: i32, is_last: bool, collapsed: bool, key: Optio
             view! {
                 <span class="json-null">
                     "null"
-                    {if !is_last { Some(view! { <span class="json-comma">","</span> }) } else { None }}
+                    {if !is_last {
+                        Some(view! { <span class="json-comma">","</span> })
+                    } else {
+                        None
+                    }}
                 </span>
             }.into_any()
         }
@@ -172,7 +257,5 @@ fn JsonNode(value: Value, level: i32, is_last: bool, collapsed: bool, key: Optio
 
 #[component]
 pub fn JsonNotFound() -> impl IntoView {
-    view! {
-       <span class="json-error">"No data or querying in progress."</span>
-    }
+    view! { <span class="json-error">"No data or querying in progress."</span> }
 }

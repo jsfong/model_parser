@@ -11,7 +11,7 @@ async fn main() -> std::io::Result<()> {
     use leptos_actix::{generate_route_list, LeptosRoutes};
     use leptos_meta::MetaTags;
     use leptos_model_parser::app::*;
-    use leptos_model_parser::model::state::AppState;
+    use leptos_model_parser::model::app_state::AppState;
     use leptos_model_parser::model::database_util::{self, connect_to_db};
 
     let conf = get_configuration(None).unwrap();

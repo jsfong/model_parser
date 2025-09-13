@@ -30,6 +30,7 @@ leptos-use = "0.16.2"
 quick_cache = { version = "0.6.16", optional = true }
 once_cell = { version = "1.21.3", optional = true }
 regex = "1.11.1"
+server_fn = "0.8.6"
 
 
 [features]

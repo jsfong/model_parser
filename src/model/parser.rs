@@ -1,6 +1,4 @@
-
-
-use crate::model::state::QuickCache;
+use crate::model::app_state::QuickCache;
 
 use super::cubs_model::{ModelData, ModelResponse, ModelVersionNumber};
 use anyhow::anyhow;
@@ -50,7 +48,7 @@ where
 async fn read_latest_model_data_from_db(
     pg_pool: &sqlx::Pool<sqlx::Postgres>,
     model_id: &String,
-    cache: &QuickCache,
+    cache: &QuickCache<ModelData>,
 ) -> Result<ModelData, Box<dyn Error>> {
     let start_time = Instant::now();
 
@@ -85,7 +83,11 @@ LIMIT 1"#,
     // Store in cache
     let key = model_id.clone() + "_" + &model_data.version.to_string();
     println!("[read_model_data_from_db] Cache Model data key: {}", key);
-    cache.insert(&key, &model_data);
+    cache.insert(
+        &model_id.clone(),
+        &model_data.version.to_string(),
+        &model_data,
+    );
 
     //Log time
     let elapsed_time = start_time.elapsed();
@@ -99,7 +101,7 @@ LIMIT 1"#,
 
 pub async fn read_model_data_versions(
     pg_pool: &sqlx::Pool<sqlx::Postgres>,
-    model_id: &String
+    model_id: &String,
 ) -> Result<Vec<ModelVersionNumber>, Box<dyn Error>> {
     let start_time = Instant::now();
 
@@ -131,7 +133,7 @@ async fn read_model_data_from_db_with_version(
     pg_pool: &sqlx::Pool<sqlx::Postgres>,
     model_id: &String,
     version_no: i32,
-    cache: &QuickCache,
+    cache: &QuickCache<ModelData>,
 ) -> Result<ModelData, Box<dyn Error>> {
     let start_time = Instant::now();
 
@@ -168,7 +170,11 @@ async fn read_model_data_from_db_with_version(
         "[read_model_data_from_db_with_version] Cache Model data key: {}",
         key
     );
-    cache.insert(&key, &model_data);
+    cache.insert(
+        &model_id.clone(),
+        &model_data.version.to_string(),
+        &model_data,
+    );
 
     //Log time
     let elapsed_time = start_time.elapsed();
@@ -182,7 +188,7 @@ async fn read_model_data_from_db_with_version(
 
 pub async fn read_model_data(
     pg_pool: &sqlx::Pool<sqlx::Postgres>,
-    cache: &QuickCache,
+    cache: &QuickCache<ModelData>,
     model_id: &String,
     version_num: i32,
 ) -> Result<ModelData, Box<dyn Error>> {
@@ -206,8 +212,7 @@ pub async fn read_model_data(
     }
 
     // Get from cache
-    let key = model_id.clone() + "_" + &version_num.to_string();
-    if let Some(cached_model_data) = cache.get(&key) {
+    if let Some(cached_model_data) = cache.get(&model_id.clone(), &version_num.to_string()) {
         println!("[read_model_data] Found model data {} in cache", model_id);
 
         let elapsed_time = start_time.elapsed();
@@ -220,7 +225,8 @@ pub async fn read_model_data(
     }
 
     // Get from DB
-    let model_data = read_model_data_from_db_with_version(pg_pool, model_id, version_num, &cache).await;
+    let model_data =
+        read_model_data_from_db_with_version(pg_pool, model_id, version_num, &cache).await;
 
     //Log time
     let elapsed_time = start_time.elapsed();
