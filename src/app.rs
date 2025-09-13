@@ -106,6 +106,8 @@ fn HomePage() -> impl IntoView {
     let (result_count, set_result_count) = signal(0 as usize);
     let (total_result_count, set_total_result_count) = signal(0 as usize);
 
+    let (selected_object_id, set_selected_object_id): (ReadSignal<Option<String>>, WriteSignal<Option<String>>) = signal(None);
+
     let parsed_json_stats = Memo::new(move |_| {
         let stats_str = stats.get();
         let parsed = serde_json::from_str::<Value>(&stats_str).ok();
@@ -167,9 +169,6 @@ fn HomePage() -> impl IntoView {
     let parsed_query = Memo::new(move |_| serde_json::from_str::<Value>(&query.get()).ok());
 
     view! {
-        <h1>"Model Parser"</h1>
-        <br />
-
         // Input
         <ActionForm action=parse_model_action>
             <div class="flex-cmd-parent">
@@ -179,7 +178,7 @@ fn HomePage() -> impl IntoView {
                     name="model_id"
                     placeholder="Model Id"
                     size=40
-                    value="aa5bc4b2-156f-4bad-b13a-4ccf31df53ca"
+                    value="4fd3dccd-9b87-4fde-9b50-db4f57ab10e6"
                     class="flex-cmd-model-id"
                 />
                 <label for="vers_no">Version No:</label>
@@ -213,6 +212,7 @@ fn HomePage() -> impl IntoView {
 
         // View
         <div class="flex-container">
+            //Main view
             <div class="flex-container-view">
                 // Element viewer
                 {move || {
@@ -227,8 +227,11 @@ fn HomePage() -> impl IntoView {
                                     set_query=set_query
                                 />
                             </ActionForm>
-                            <div class="result-count">{result_count} " out of " {total_result_count} " results"</div>
-                            <json_viewer::JsonViewer json_value=parsed_query collapsed=false />
+                            <div class="staus-bar-flex-parent">
+                                <span class="staus-bar-flex-item">"Selected "{selected_object_id}</span>
+                                <div class="staus-bar-flex-item  staus-bar-flex-result-count">{result_count} " out of " {total_result_count} " results"</div>
+                            </div>
+                            <json_viewer::JsonViewer json_value=parsed_query collapsed=false set_selected_object_id=set_selected_object_id/>
                             <div>"Duration: " {duration}</div>
                         }
                             .into_any()

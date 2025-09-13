@@ -1,0 +1,17 @@
+.staus-bar-flex-parent {
+    display: flex;
+    flex-direction: row;
+    justify-content: left;
+    gap: 20px 10px;
+    // align-items: center;
+}
+
+.staus-bar-flex-item {
+    flex-basis: auto;
+}
+
+.staus-bar-flex-result-count{
+    text-align: right;
+    font-size: 13px;
+    margin-left: auto;
+}

@@ -14,7 +14,7 @@ pub fn ElementViewerInput(
 
     view! {
         <div class="flex-container-view-input">
-            <h3 class="flex-container-view-input-heading">Element Filtering</h3>
+            <h4 class="flex-container-view-input-heading">Element Filtering</h4>
             <div class="flex-container-view-input-row">
                 <input type="hidden" name="model_id" prop:value=model_id size=40 />
                 <input type="hidden" name="vers_no" prop:value=version />
@@ -52,7 +52,7 @@ pub fn ElementViewerInput(
                 </select>
             </div>
 
-            <h3 class="flex-container-view-input-heading">Facet Filtering</h3>
+            <h4 class="flex-container-view-input-heading">Facet Filtering</h4>
             <div class="flex-container-view-input-row">
                 <label for="natures">Facet Type :</label>
                 <select id="facet_type" name="facet_type">
@@ -83,7 +83,7 @@ pub fn ElementViewerInput(
                 </button>
             </div>
 
-            <h3 class="flex-container-view-input-heading">Output Filtering</h3>
+            <h4 class="flex-container-view-input-heading">Output Filtering</h4>
             <div class="flex-container-view-input-row">
                 <label for="depth">Depth:</label>
                 <input type="number" id="depth" name="depth" min="0" max="100" step="1" value="3" />

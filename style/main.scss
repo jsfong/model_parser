@@ -1,3 +1,4 @@
+@import "components/status_bar";
 /* json_renderer.css */
 // 89A8B2
 // B3C8CF
@@ -44,10 +45,7 @@ button {
 .input-section {
     margin-bottom: 20px;
 }
-.result-count{
-    text-align: right;
-    font-size: 13px;
-}
+
 
 .json-viewer {
     font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
@@ -196,7 +194,7 @@ button {
     }
 }
 
-// Flex
+// Input Command
 .flex-cmd-parent {
     display: flex;
     flex-direction: row;
@@ -231,8 +229,10 @@ button {
     display: flex;
     gap: 0px;
     background-color: #F1F0E8;
-    padding: 10px;
-    margin-top: 1%;
+    padding: 8px;
+    // margin-top: 1%;
+    margin-bottom: 1%;
+    border-radius: 5px;
 
 }
 
@@ -245,7 +245,7 @@ button {
 
 .flex-container-view-input-heading {
     color: #89A8B2;
-    margin-top: 2%;
+    margin-top: 1%;
     margin-bottom: 1%;
 }
 
@@ -354,4 +354,29 @@ button {
         bottom: 0;
         opacity: 0;
     }
+}
+
+//Tooltip for cubsObject id
+.tooltip {
+  position: relative;
+  display: inline-block;
+  color: #032f62;
+}
+
+.tooltip .tooltiptext {
+  visibility: hidden;
+  width: 120px;
+  background-color: black;
+  color: #fff;
+  text-align: center;
+  padding: 5px 0;
+  border-radius: 6px;
+ 
+  /* Position the tooltip text - see examples below! */
+  position: absolute;
+  z-index: 1;
+}
+
+.tooltip:hover .tooltiptext {
+  visibility: visible;
 }
