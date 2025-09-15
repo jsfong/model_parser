@@ -13,6 +13,7 @@ pub enum ModelError {
     ModelNotFound(String),
     InvalidInput,
     ServerFnError(ServerFnErrorErr),
+    ParsingError(String),
 }
 
 impl fmt::Display for ModelError {
@@ -24,6 +25,7 @@ impl fmt::Display for ModelError {
             ModelError::ModelNotFound(err) => write!(f, "Model {} not found", err),
             ModelError::ServerFnError(_server_fn_error_err) => Ok(()),
             ModelError::InvalidInput => Ok(()),
+            ModelError::ParsingError(err) => write!(f, "Unable to parse {}", err),
         }
     }
 }

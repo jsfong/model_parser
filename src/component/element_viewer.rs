@@ -1,5 +1,7 @@
 use leptos::prelude::*;
 
+use crate::app::RHSMode;
+
 #[component]
 pub fn ElementViewerInput(
     model_id: ReadSignal<String>,
@@ -7,10 +9,14 @@ pub fn ElementViewerInput(
     types: ReadSignal<Vec<String>>,
     natures: ReadSignal<Vec<String>>,
     set_query: WriteSignal<String>,
+    set_rhs_mode: WriteSignal<RHSMode>,
 ) -> impl IntoView {
     let (query_value, set_query_value) = signal("".to_string());
-    let clear_query = move |_| set_query_value.set(String::new());
-    let clear_query_result = move |_| set_query.set("Querying...".to_string());
+    // let clear_query = move |_| set_query_value.set(String::new());
+    let clear_query_result = move |_| {
+        set_query.set("Querying...".to_string());
+        set_rhs_mode.set(RHSMode::ModelStats);
+    };
 
     view! {
         <div class="flex-container-view-input">
@@ -74,13 +80,7 @@ pub fn ElementViewerInput(
 
                 <label for="query">Detail:</label>
                 <input type="checkbox" name="is_detail" value="is_detail" />
-                <button
-                    type="button"
-                    on:click=clear_query
-                    disabled=move || query_value.get().is_empty()
-                >
-                    Clear
-                </button>
+
             </div>
 
             <h4 class="flex-container-view-input-heading">Output Filtering</h4>
@@ -100,6 +100,7 @@ pub fn ElementViewerInput(
                 <button type="submit" on:click=clear_query_result>
                     Run Query
                 </button>
+                <input type="reset" value="Clear" />
             </div>
         </div>
     }

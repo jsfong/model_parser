@@ -188,8 +188,9 @@ fn HomePage() -> impl IntoView {
                     size=40
                     value="4fd3dccd-9b87-4fde-9b50-db4f57ab10e6"
                     class="flex-cmd-model-id"
+                    on:input=move |_| set_model_versions.set(vec!["".to_string()])
                 />
-                <label for="vers_no">Version No:</label>
+                <label for="vers_no">Version No:</label> 
                 <select
                     id="vers_no"
                     name="vers_no"
@@ -210,7 +211,7 @@ fn HomePage() -> impl IntoView {
                             .collect_view()
                     }}
                 </select>
-                <button type="submit" class="flex-cmd-item">
+                <button type="submit" class="flex-cmd-item" on:click=move |_| set_rhs_mode.set(RHSMode::ModelStats)>
                     Read model
                 </button>
             </div>
@@ -233,6 +234,7 @@ fn HomePage() -> impl IntoView {
                                     types=element_type
                                     natures=element_nature
                                     set_query=set_query
+                                    set_rhs_mode=set_rhs_mode
                                 />
                             </ActionForm>
                             <div class="staus-bar-flex-parent">
@@ -243,6 +245,7 @@ fn HomePage() -> impl IntoView {
                                     {result_count} " out of " {total_result_count} " results"
                                 </div>
                             </div>
+                            //TODO move the next set of result
                             <json_viewer::JsonViewer
                                 json_value=parsed_query
                                 collapsed=false
@@ -341,9 +344,9 @@ pub async fn parse_model(model_id: String, vers_no: String) -> Result<ServerResu
     let model_data = match model_data {
         Ok(model_data) => model_data,
         Err(_) => {
-            eprintln!("Unable to read saved Model");
+            eprintln!("Unable to find / read saved Model");
             return Err(ServerFnError::ServerError(
-                "Unable to read saved Model".to_string(),
+                "Unable to find / read saved Model".to_string(),
             ));
         }
     };
@@ -522,4 +525,3 @@ pub async fn query_model(
     })
 }
 
-// TODO to show relationship

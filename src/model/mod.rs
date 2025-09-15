@@ -8,6 +8,8 @@ pub mod database_util;
 #[cfg(feature = "ssr")]
 pub mod app_state;
 #[cfg(feature = "ssr")]
-pub mod element_connector;
+pub mod element_graph;
 #[cfg(feature = "ssr")]
 pub mod element_parser;
+#[cfg(feature = "ssr")]
+pub mod element_graph_parser;

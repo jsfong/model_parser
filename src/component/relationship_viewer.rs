@@ -1,17 +1,43 @@
-use crate::model::{cubs_model::Element, model_error::ModelError};
-use leptos::prelude::*;
+use std::collections::HashMap;
 
-//TODO Relationship output struct
-// TODO generic
-struct RelationshipDetail<'a> {
-    parents: Vec<&'a Element>,
-    target: &'a Element,
-    childs: Vec<ElementWithChild<'a>>,    
+use crate::model::model_error::ModelError;
+use leptos::{logging::log, prelude::*};
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub enum OutputToken<T> {
+    Tab,
+    Value(T),
+    InArrow,
+    OutArrow,
 }
 
-struct ElementWithChild<'a> {
-    element: &'a Element,
-    child: Vec<ElementWithChild<'a>>,
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct OutputLine<T> {
+    pub line: Vec<OutputToken<T>>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct OutputGraph<T> {
+    pub parent_lines: Vec<OutputLine<T>>,
+    pub child_lines: Vec<OutputLine<T>>,
+    pub elements_data: HashMap<String, Value>,
+}
+
+pub enum RelationshipDirection {
+    Parent,
+    Child,
+}
+
+impl<T> OutputLine<T> {
+    pub fn new() -> Self {
+        Self { line: Vec::new() }
+    }
+
+    pub fn push(&mut self, token: OutputToken<T>) {
+        self.line.push(token);
+    }
 }
 
 #[component]
@@ -33,19 +59,167 @@ pub fn RelationshipViewer(
         |(model_id, version, id)| async move { get_relationship_detail(model_id, version, id).await },
     );
 
+    // TODO now only render child, to render parent
     let async_relationship_detail_result = move || {
         let result = async_relationship_detail.get();
 
         match result {
             Some(result) => match result {
-                Ok(r) => r,
-                Err(e) => e.to_string(),
+                Ok(r) => view! { <RelationshipChildNodeRender data=r /> }.into_any(),
+                Err(e) => view! { <span>"error "</span> }.into_any(),
             },
-            None => "Loading...".to_string(),
+            None => view! { <span>"Loading ... "</span> }.into_any(),
         }
     };
 
-    view! { <span>"Relationship viewer for "{async_relationship_detail_result}</span> }
+    view! {
+        <Transition fallback=move || {
+            view! { <p>"Loading initial data..."</p> }
+        }>
+            <h2 class="label-model-stats">Relationship Stats</h2>
+            {move || async_relationship_detail_result}
+        </Transition>
+    }
+
+    // view! { <span>"Relationship viewer for "{async_relationship_detail_result}</span> }
+}
+
+#[component]
+pub fn RelationshipChildNodeRender(data: OutputGraph<String>) -> impl IntoView {
+    let elements_store = data.elements_data;
+    let parent_lines = data.parent_lines;
+    let child_lines = data.child_lines;
+    view! {
+        <h3 class="label-model-stats">"Parents: "</h3>
+        {parent_lines
+            .iter()
+            .map(|output_line| {
+                view! {
+                    <div class="relationship-viewer-flex-parent">
+                        {output_line
+                            .line
+                            .iter()
+                            .map(|token| {
+                                view! {
+                                    <OutputTokenRender
+                                        token=token.clone()
+                                        elements_store=&elements_store
+                                    />
+                                }
+                            })
+                            .collect::<Vec<_>>()}
+                    </div>
+                }
+            })
+            .collect::<Vec<_>>()}
+
+        <h3 class="label-model-stats">"Childs: "</h3>
+        {child_lines
+            .iter()
+            .map(|output_line| {
+                view! {
+                    <div class="relationship-viewer-flex-parent">
+                        {output_line
+                            .line
+                            .iter()
+                            .map(|token| {
+                                view! {
+                                    <OutputTokenRender
+                                        token=token.clone()
+                                        elements_store=&elements_store
+                                    />
+                                }
+                            })
+                            .collect::<Vec<_>>()}
+                    </div>
+                }
+            })
+            .collect::<Vec<_>>()}
+    }
+}
+
+//TODO when click find relationship again
+#[component]
+pub fn  OutputTokenRender<'a>(token: OutputToken<String>, elements_store: &'a HashMap<String, Value>) -> impl IntoView {
+
+    match token {
+        OutputToken::Tab => view! { <span class="relationship-viewer-flex-line, relationship-viewer-token-tab"></span> }.into_any(),
+        OutputToken::Value(v) => {
+            let element = match elements_store.get(&v) {
+                Some(element) => element.clone(),
+                None => Value::Null,
+            };
+            
+            view! {
+                <span class="relationship-viewer-flex-line, relationship-viewer-flex-value-tooltip">
+                    // {v}
+                    <RenderJsonValue value=element.clone() key="name".to_string() />:<RenderJsonValue value=element.clone() key="type".to_string() />
+                    <div class="relationship-viewer-flex-value-tooltiptext">
+                    <OutputTooltipRender value=element />
+                    </div>
+                </span>
+            }.into_any()    
+        },
+
+        OutputToken::InArrow => view! { <span class="relationship-viewer-flex-line">"➚"</span> }.into_any(),
+        OutputToken::OutArrow => view! { <span class="relationship-viewer-flex-line">"➘"</span> }.into_any(),
+    }
+}
+
+#[component]
+pub fn  OutputTooltipRender(value: Value) -> impl IntoView {
+
+     let mut rows = Vec::new();
+     rows.push(view! { <RenderJsonValueToTD value=value.clone() key="id".to_string() label="Id".to_string() /> });
+     rows.push(view! {
+         <RenderJsonValueToTD value=value.clone() key="type".to_string() label="Type".to_string() />
+     });
+     rows.push(view! {
+         <RenderJsonValueToTD value=value.clone() key="name".to_string() label="Name".to_string() />
+     });
+     rows.push(view! {
+         <RenderJsonValueToTD
+             value=value.clone()
+             key="nature".to_string()
+             label="Nature".to_string()
+         />
+     });
+    
+    view! { <table>{rows}</table> }
+
+
+}
+
+#[component]
+fn RenderJsonValueToTD (value: Value, key: String, label: String) -> impl IntoView {
+
+    if let Some(value) = value.get(key) {
+        view! {
+            <tr>
+                <td>{label.clone()}": "</td>
+                <td>{value.to_string()}</td>
+            </tr>
+        }.into_any()
+    } else {
+        view! {}.into_any()
+    }
+}
+
+#[component]
+fn RenderJsonValue (value: Value, key: String) -> impl IntoView {
+
+    if let Some(value) = value.get(key) {
+        view! {
+            {
+                match value == "" {
+                    true => "\"\"".to_string(),
+                    false => value.to_string().replace("\"", ""),
+                }
+            }
+        }.into_any()
+    } else {
+        view! {}.into_any()
+    }
 }
 
 #[server(GetRelationship, "/api")]
@@ -53,9 +227,14 @@ pub async fn get_relationship_detail(
     model_id: String,
     version: String,
     id: String,
-) -> Result<String, ModelError> {
-    use crate::model::app_state;
-    use crate::model::element_parser::ElementConnectorBuilder;
+) -> Result<OutputGraph<String>, ModelError> {
+    use crate::model::{
+        app_state,
+        element_graph::{ElementConnector, ElementGraph},
+        element_graph_parser::ElementGraphParser,
+        element_parser::ElementConnectorBuilder,
+        model_error::ModelError,
+    };
     use actix_web::web::Data;
     use leptos::logging::log;
     use leptos_actix::*;
@@ -108,9 +287,18 @@ pub async fn get_relationship_detail(
         }
     };
 
-    // From graph parse relationship
+    // From graph parse relationship and return part of the graph n parent and n layer of child
+    let parse_graph = ElementGraphParser::parse_graph(&graph, &id, 1, 2).unwrap();
 
     // Construct into output
+    let output_graph = ElementGraphParser::build_output(&parse_graph, &id, &model);
 
-    Ok("LOADED".to_string())
+    //Log time
+    let elapsed_time = start_time.elapsed();
+    println!(
+        "[Execution time] {} - {:?}",
+        "get_relationship_detail", elapsed_time
+    );
+
+    output_graph
 }

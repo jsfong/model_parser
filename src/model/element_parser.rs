@@ -2,7 +2,7 @@ use std::time::Instant;
 
 use crate::model::{
     cubs_model::{Element, Relationship},
-    element_connector::ElementConnectorGraph,
+    element_graph::ElementGraph,
     model_error::ModelError,
 };
 
@@ -12,7 +12,7 @@ impl ElementConnectorBuilder {
     pub fn build_graph(
         elements: &[Element],
         relationship: &[Relationship],
-    ) -> Result<ElementConnectorGraph, ModelError> {
+    ) -> Result<ElementGraph, ModelError> {
         if elements.is_empty() || relationship.is_empty() {
             return Err(ModelError::ModelGraphBuildingError(
                 "Unable to build graph due to empty element or empty relationship".to_string(),
@@ -20,7 +20,7 @@ impl ElementConnectorBuilder {
         }
 
         let start_time = Instant::now();
-        let mut graph = ElementConnectorGraph::new();
+        let mut graph = ElementGraph::new();
 
         // For each elements build a connector
         println!("[ElementConnectorBuilder - build_graph: Building graph]");

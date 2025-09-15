@@ -10,7 +10,7 @@ pub struct ModelResponse {
     pub data: ModelData,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ModelData {
     pub schema_version: String,
@@ -187,7 +187,7 @@ impl Element {
         }
     }
 
-    fn get_common_fields_values_map(&self) -> HashMap<String, serde_json::Value> {
+    pub fn get_common_fields_values_map(&self) -> HashMap<String, serde_json::Value> {
         let mut fields_values_map: HashMap<String, serde_json::Value> = HashMap::new();
 
         Self::set_value_to_map(& mut fields_values_map, "id", &self.id.clone());
