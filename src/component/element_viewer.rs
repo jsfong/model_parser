@@ -15,7 +15,7 @@ pub fn ElementViewerInput(
     // let clear_query = move |_| set_query_value.set(String::new());
     let clear_query_result = move |_| {
         set_query.set("Querying...".to_string());
-        set_rhs_mode.set(RHSMode::ModelStats);
+        // set_rhs_mode.set(RHSMode::ModelStats);  //Switch RHS back to model stats
     };
 
     view! {
@@ -67,7 +67,7 @@ pub fn ElementViewerInput(
                     <option value="coreFacets">Core Facets</option>
                     <option value="facets">Facets</option>
                 </select>
-                <label for="query">JSON Pointer:</label>
+                <label for="query">Facet JSON Pointer:</label>
                 <input
                     type="text"
                     name="query"
@@ -95,7 +95,7 @@ pub fn ElementViewerInput(
                     min="0"
                     max="5000"
                     step="1"
-                    value="100"
+                    value="30"
                 />
                 <button type="submit" on:click=clear_query_result>
                     Run Query

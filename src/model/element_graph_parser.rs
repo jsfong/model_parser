@@ -29,6 +29,7 @@ impl ElementGraphParser {
         let mut partial_graph = ElementGraph::new();
 
         // Find target element connector
+        println!("[ElementGraphParser - parse_graph ] retrieving {} from {} connection", target_element_id, full_graph.get_connection_count());
         let target_connector =
             full_graph
                 .get_connection(target_element_id)

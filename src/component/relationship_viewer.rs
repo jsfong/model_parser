@@ -45,6 +45,7 @@ pub fn RelationshipViewer(
     model_id: ReadSignal<String>,
     selected_version: ReadSignal<String>,
     selected_object_id: ReadSignal<String>,
+    set_selected_object_id: WriteSignal<String>,
 ) -> impl IntoView {
     // Create a resource of relationship detail
     // Resource trigger the fetcher when id changed
@@ -59,13 +60,12 @@ pub fn RelationshipViewer(
         |(model_id, version, id)| async move { get_relationship_detail(model_id, version, id).await },
     );
 
-    // TODO now only render child, to render parent
     let async_relationship_detail_result = move || {
         let result = async_relationship_detail.get();
 
         match result {
             Some(result) => match result {
-                Ok(r) => view! { <RelationshipChildNodeRender data=r /> }.into_any(),
+                Ok(r) => view! { <RelationshipNodeRender data=r set_selected_object_id=set_selected_object_id /> }.into_any(),
                 Err(e) => view! { <span>"error "</span> }.into_any(),
             },
             None => view! { <span>"Loading ... "</span> }.into_any(),
@@ -85,7 +85,7 @@ pub fn RelationshipViewer(
 }
 
 #[component]
-pub fn RelationshipChildNodeRender(data: OutputGraph<String>) -> impl IntoView {
+pub fn RelationshipNodeRender(data: OutputGraph<String>, set_selected_object_id: WriteSignal<String>) -> impl IntoView {
     let elements_store = data.elements_data;
     let parent_lines = data.parent_lines;
     let child_lines = data.child_lines;
@@ -104,6 +104,7 @@ pub fn RelationshipChildNodeRender(data: OutputGraph<String>) -> impl IntoView {
                                     <OutputTokenRender
                                         token=token.clone()
                                         elements_store=&elements_store
+                                        set_selected_object_id=set_selected_object_id
                                     />
                                 }
                             })
@@ -127,6 +128,7 @@ pub fn RelationshipChildNodeRender(data: OutputGraph<String>) -> impl IntoView {
                                     <OutputTokenRender
                                         token=token.clone()
                                         elements_store=&elements_store
+                                        set_selected_object_id=set_selected_object_id
                                     />
                                 }
                             })
@@ -138,9 +140,8 @@ pub fn RelationshipChildNodeRender(data: OutputGraph<String>) -> impl IntoView {
     }
 }
 
-//TODO when click find relationship again
 #[component]
-pub fn  OutputTokenRender<'a>(token: OutputToken<String>, elements_store: &'a HashMap<String, Value>) -> impl IntoView {
+pub fn  OutputTokenRender<'a>(token: OutputToken<String>, elements_store: &'a HashMap<String, Value>, set_selected_object_id: WriteSignal<String>) -> impl IntoView {
 
     match token {
         OutputToken::Tab => view! { <span class="relationship-viewer-flex-line, relationship-viewer-token-tab"></span> }.into_any(),
@@ -153,9 +154,14 @@ pub fn  OutputTokenRender<'a>(token: OutputToken<String>, elements_store: &'a Ha
             view! {
                 <span class="relationship-viewer-flex-line, relationship-viewer-flex-value-tooltip">
                     // {v}
-                    <RenderJsonValue value=element.clone() key="name".to_string() />:<RenderJsonValue value=element.clone() key="type".to_string() />
+                    <RenderJsonValue value=element.clone() key="name".to_string() />
+                    :
+                    <RenderJsonValue value=element.clone() key="type".to_string() />
                     <div class="relationship-viewer-flex-value-tooltiptext">
-                    <OutputTooltipRender value=element />
+                        <OutputTooltipRender
+                            value=element
+                            set_selected_object_id=set_selected_object_id
+                        />
                     </div>
                 </span>
             }.into_any()    
@@ -167,25 +173,42 @@ pub fn  OutputTokenRender<'a>(token: OutputToken<String>, elements_store: &'a Ha
 }
 
 #[component]
-pub fn  OutputTooltipRender(value: Value) -> impl IntoView {
+pub fn  OutputTooltipRender(value: Value, set_selected_object_id: WriteSignal<String>) -> impl IntoView {
+
+    let id: Option<String> =  value.get("id").map(|id| id.to_string());
 
      let mut rows = Vec::new();
-     rows.push(view! { <RenderJsonValueToTD value=value.clone() key="id".to_string() label="Id".to_string() /> });
+     rows.push(view! {
+         <RenderJsonValueToTD
+             value=value.clone()
+             key="id".to_string()
+             label="Id".to_string()
+         />
+     }.into_any());
      rows.push(view! {
          <RenderJsonValueToTD value=value.clone() key="type".to_string() label="Type".to_string() />
-     });
+     }.into_any());
      rows.push(view! {
          <RenderJsonValueToTD value=value.clone() key="name".to_string() label="Name".to_string() />
-     });
+     }.into_any());
      rows.push(view! {
          <RenderJsonValueToTD
              value=value.clone()
              key="nature".to_string()
              label="Nature".to_string()
          />
-     });
+     }.into_any());
     
-    view! { <table>{rows}</table> }
+    view! { 
+        <table>{rows}</table>
+        <button  //  Search of new relationship when click the id
+             on:click=move |_| {
+                 match &id {
+                     Some(id) => set_selected_object_id.set(id.to_string().replace("\"", "")),
+                     None => {}
+                 }
+             }>Check Relationship</button>
+     }
 
 
 }
@@ -210,12 +233,10 @@ fn RenderJsonValue (value: Value, key: String) -> impl IntoView {
 
     if let Some(value) = value.get(key) {
         view! {
-            {
-                match value == "" {
-                    true => "\"\"".to_string(),
-                    false => value.to_string().replace("\"", ""),
-                }
-            }
+            {match value == "" {
+                true => "\"\"".to_string(),
+                false => value.to_string().replace("\"", ""),
+            }}
         }.into_any()
     } else {
         view! {}.into_any()
@@ -270,12 +291,12 @@ pub async fn get_relationship_detail(
     let graph_cache = app_state.get_graph_cache();
     let graph = match graph_cache.get(&model_id, &version) {
         Some(graph) => {
-            println!("[RelationshipViewer - get_relationship_detail: Found graph in cache]");
+            println!("[RelationshipViewer - get_relationship_detail]: Found graph in cache");
             graph
         }
         None => {
             println!(
-                "[RelationshipViewer - get_relationship_detail: Graph not found cache. Building..]"
+                "[RelationshipViewer - get_relationship_detail]: Graph not found cache. Building.."
             );
             // Build graph if not found
             let built_graph = ElementConnectorBuilder::build_graph(elements, relationship)?;
@@ -288,7 +309,7 @@ pub async fn get_relationship_detail(
     };
 
     // From graph parse relationship and return part of the graph n parent and n layer of child
-    let parse_graph = ElementGraphParser::parse_graph(&graph, &id, 1, 2).unwrap();
+    let parse_graph = ElementGraphParser::parse_graph(&graph, &id, 1, 2)?;
 
     // Construct into output
     let output_graph = ElementGraphParser::build_output(&parse_graph, &id, &model);

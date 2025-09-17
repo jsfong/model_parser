@@ -271,6 +271,7 @@ fn HomePage() -> impl IntoView {
                                 model_id=model_id
                                 selected_version=selected_version
                                 selected_object_id=selected_object_id
+                                set_selected_object_id=set_selected_object_id
                             />
                         }
                             .into_any()
