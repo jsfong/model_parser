@@ -252,6 +252,7 @@ fn HomePage() -> impl IntoView {
                                 set_selected_object_id=set_selected_object_id
                                 set_rhs_mode=set_rhs_mode
                             />
+                            <json_viewer::RenderStats json_value=parsed_query />
                             <div>"Duration: " {duration}</div>
                         }
                             .into_any()

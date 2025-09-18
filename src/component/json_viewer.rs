@@ -1,5 +1,5 @@
-use leptos::prelude::*;
-use serde_json::Value;
+use leptos::{logging::log, prelude::*};
+use serde_json::{json, value, Value};
 
 use crate::app::RHSMode;
 
@@ -7,11 +7,18 @@ const PADDING: i32 = 10;
 const COLLAPSED_OBJECT_WHEN_MORE_THAN_LEVEL: i32 = 2;
 
 #[component]
-pub fn JsonViewer(json_value: Memo<Option<Value>>, collapsed: bool, set_selected_object_id: WriteSignal<String>, set_rhs_mode: WriteSignal<RHSMode>) -> impl IntoView {
+pub fn JsonViewer(
+    json_value: Memo<Option<Value>>,
+    collapsed: bool,
+    set_selected_object_id: WriteSignal<String>,
+    set_rhs_mode: WriteSignal<RHSMode>,
+) -> impl IntoView {
+    //Consume and render
     view! {
         <div class="json-container">
             <div class="json-viewer">
                 {move || {
+                    log!("Rendering Json viewer");
                     if let Some(v) = json_value.get() {
                         view! {
                             <JsonNode
@@ -31,23 +38,29 @@ pub fn JsonViewer(json_value: Memo<Option<Value>>, collapsed: bool, set_selected
                 }}
             </div>
         </div>
+
     }
-
-
 }
 
-
 #[component]
-fn JsonNode(value: Value, level: i32, is_last: bool, collapsed: bool, key: Option<String>, set_selected_object_id: WriteSignal<String>, set_rhs_mode: WriteSignal<RHSMode>) -> impl IntoView {
+fn JsonNode(
+    value: Value,
+    level: i32,
+    is_last: bool,
+    collapsed: bool,
+    key: Option<String>,
+    set_selected_object_id: WriteSignal<String>,
+    set_rhs_mode: WriteSignal<RHSMode>,
+) -> impl IntoView {
     // let indent_style = format!("margin-left: {}px;", level * PADDING);
-    
+
     match value {
         Value::Object(obj) => {
             let (is_collapsed, set_collapsed) = signal(collapsed);
             set_collapsed.update(|c| *c = *c || level > COLLAPSED_OBJECT_WHEN_MORE_THAN_LEVEL);
             let entries: Vec<(String, Value)> = obj.into_iter().collect();
             let obj_len = entries.len();
-            
+
             if obj_len == 0 {
                 view! {
                     <span>
@@ -58,7 +71,8 @@ fn JsonNode(value: Value, level: i32, is_last: bool, collapsed: bool, key: Optio
                             None
                         }}
                     </span>
-                }.into_any()
+                }
+                .into_any()
             } else {
                 view! {
                     <div class="json-object">
@@ -108,13 +122,14 @@ fn JsonNode(value: Value, level: i32, is_last: bool, collapsed: bool, key: Optio
                             </div>
                         </div>
                     </div>
-                }.into_any()
+                }
+                .into_any()
             }
-        },
+        }
         Value::Array(arr) => {
             let (is_collapsed, set_collapsed) = signal(false);
             let length = arr.len();
-            
+
             if length == 0 {
                 view! {
                     <span>
@@ -125,7 +140,8 @@ fn JsonNode(value: Value, level: i32, is_last: bool, collapsed: bool, key: Optio
                             None
                         }}
                     </span>
-                }.into_any()
+                }
+                .into_any()
             } else {
                 view! {
                     <div class="json-array">
@@ -172,7 +188,7 @@ fn JsonNode(value: Value, level: i32, is_last: bool, collapsed: bool, key: Optio
                     </div>
                 }.into_any()
             }
-        },
+        }
         Value::String(s) => {
             view! {
                 <span class="json-string">
@@ -215,47 +231,78 @@ fn JsonNode(value: Value, level: i32, is_last: bool, collapsed: bool, key: Optio
                     }}
                 </span>
             }.into_any()
-        },
-        Value::Number(n) => {
-            view! {
-                <span class="json-number">
-                    {n.to_string()}
-                    {if !is_last {
-                        Some(view! { <span class="json-comma">","</span> })
-                    } else {
-                        None
-                    }}
-                </span>
-            }.into_any()
-        },
-        Value::Bool(b) => {
-            view! {
-                <span class="json-boolean">
-                    {b.to_string()}
-                    {if !is_last {
-                        Some(view! { <span class="json-comma">","</span> })
-                    } else {
-                        None
-                    }}
-                </span>
-            }.into_any()
-        },
-        Value::Null => {
-            view! {
-                <span class="json-null">
-                    "null"
-                    {if !is_last {
-                        Some(view! { <span class="json-comma">","</span> })
-                    } else {
-                        None
-                    }}
-                </span>
-            }.into_any()
         }
+        Value::Number(n) => view! {
+            <span class="json-number">
+                {n.to_string()}
+                {if !is_last { Some(view! { <span class="json-comma">","</span> }) } else { None }}
+            </span>
+        }
+        .into_any(),
+        Value::Bool(b) => view! {
+            <span class="json-boolean">
+                {b.to_string()}
+                {if !is_last { Some(view! { <span class="json-comma">","</span> }) } else { None }}
+            </span>
+        }
+        .into_any(),
+        Value::Null => view! {
+            <span class="json-null">
+                "null"
+                {if !is_last { Some(view! { <span class="json-comma">","</span> }) } else { None }}
+            </span>
+        }
+        .into_any(),
     }
 }
 
 #[component]
 pub fn JsonNotFound() -> impl IntoView {
     view! { <span class="json-error">"No data or querying in progress."</span> }
+}
+
+#[component]
+pub fn RenderStats(json_value: Memo<Option<Value>>) -> impl IntoView {
+    view! {
+        {move || {
+            let stats = match json_value.get(){
+                Some(v) => get_value_number_stats(&v),
+                None => {
+                    None
+                },
+            };
+
+            // Render stats
+            if let Some(stats) = stats {
+                view! { <div>"Stats: " {stats}</div> }.into_any()
+            } else {
+                view! { <div>"Stats: N.A."</div> }.into_any()
+            }
+        }
+    }}
+
+}
+
+// /metrics/areaMetrics/IPMS1/geometric/value
+fn get_value_number_stats(value: &Value) -> Option<String> {
+    let array = value.as_array()?;
+    let numbers: Vec<f64> = array
+        .iter()
+        .filter_map(|element| element.as_number()?.as_f64())
+        .collect();
+
+    if numbers.is_empty() || numbers.len() != array.len() {
+        log!("Number is empty");
+        return None;
+    }
+
+    let sum: f64 = numbers.iter().sum();
+    let avg = sum as f64 / numbers.len() as f64;
+
+    let stats = json!({
+        "Sum": sum,
+        "Average": avg,
+    });
+
+    Some(stats.to_string())
 }
